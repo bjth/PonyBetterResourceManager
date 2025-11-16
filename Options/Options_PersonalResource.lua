@@ -647,6 +647,15 @@ function PersonalOptions:BuildOptions()
 				name = "Layout",
 				order = 30,
 			},
+			scale = {
+				type = "range",
+				name = "Scale",
+				desc = "Scale of the Personal Resource Display frame.",
+				min = 0.05,
+				max = 5.00,
+				step = 0.05,
+				order = 31,
+			},
 
 			alternateHeader = {
 				type = "header",

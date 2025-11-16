@@ -28,6 +28,7 @@ Core\EditMode_TargetResource.lua
 
 Modules\Shared\PowerColor.lua
 Modules\Shared\BarStyling.lua
+Modules\Shared\FrameLayout.lua
 Modules\Shared\DataTokens\DataTokens.lua
 Modules\Shared\DataTokens\HealthTokens.lua
 Modules\Shared\DataTokens\PowerTokens.lua

@@ -194,6 +194,13 @@ function PersonalResource:InitializeFrame()
 		C_Timer.After(0.5, setupPlayerFrameHook);
 	end
 
+	-- Apply scale if configured
+	local db = GetDB();
+	local FrameLayout = ns.FrameLayout;
+	if FrameLayout then
+		FrameLayout:ApplyScale(frame, db);
+	end
+	
 	-- Do not call Blizzard's setup methods directly (they may touch secret values),
 	-- but do apply our styling/layout once so that reload/login immediately reflects
 	-- current settings even if Setup* already ran before our hooks were installed.
@@ -290,6 +297,12 @@ function PersonalResource:RefreshFromConfig()
 				playerFrame:Show();
 			end
 		end
+	end
+
+	-- Apply scale if configured
+	local FrameLayout = ns.FrameLayout;
+	if FrameLayout then
+		FrameLayout:ApplyScale(frame, db);
 	end
 
 	local Style = ns.PersonalResourceStyle;
@@ -392,7 +405,6 @@ end
 
 function PersonalResource:OnEditModeExit(systemFrame)
 	-- The system frame here is the same PersonalResourceDisplayFrame instance.
-	-- Scale is now handled entirely by Blizzard's Edit Mode UI
 end
 
 

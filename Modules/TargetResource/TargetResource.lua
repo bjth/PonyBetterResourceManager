@@ -106,10 +106,16 @@ function TargetResource:CreateFrame()
 	powerBar:SetPoint("TOP", healthBar, "BOTTOM", 0, -2);
 	frame.PowerBar = powerBar;
 	
-	-- Setup Edit Mode integration using our shared helper
-	-- Scale is now handled entirely by Blizzard's Edit Mode UI
-	local EditModeHelper = ns.EditModeHelper;
+	-- Apply scale if configured (before Edit Mode setup)
 	local db = GetDB();
+	local FrameLayout = ns.FrameLayout;
+	if FrameLayout then
+		FrameLayout:ApplyScale(frame, db);
+	end
+	
+	-- Setup Edit Mode integration using our shared helper
+	-- Note: Scale is applied before Edit Mode setup to ensure proper positioning
+	local EditModeHelper = ns.EditModeHelper;
 	if EditModeHelper then
 		EditModeHelper:SetupEditModeIntegration({
 			frame = frame,
@@ -625,6 +631,12 @@ function TargetResource:RefreshFromConfig()
 				end
 			end
 		end
+	end
+	
+	-- Apply scale if configured
+	local FrameLayout = ns.FrameLayout;
+	if FrameLayout then
+		FrameLayout:ApplyScale(frame, db);
 	end
 	
 	local Style = ns.TargetResourceStyle;
