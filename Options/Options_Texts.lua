@@ -6,6 +6,148 @@ local LSM = ns.Media and ns.Media.LSM;
 local TextOptions = {};
 ns.PersonalResourceTextOptions = TextOptions;
 
+-- Format help window
+local formatHelpWindow = nil;
+
+local function ShowFormatHelpWindow()
+	local AceGUI = LibStub("AceGUI-3.0", true);
+	local AceConfigDialog = LibStub("AceConfigDialog-3.0", true);
+	if not AceGUI then
+		return;
+	end
+	
+	-- Close existing window if open
+	if formatHelpWindow then
+		formatHelpWindow:Hide();
+		formatHelpWindow = nil;
+	end
+	
+	-- Get the parent options dialog frame
+	local parentFrame = nil;
+	if AceConfigDialog and AceConfigDialog.OpenFrames then
+		parentFrame = AceConfigDialog.OpenFrames["PonyBetterResourceManager"];
+	end
+	
+	if not parentFrame or not parentFrame.frame then
+		-- Fallback: create as standalone window if no parent
+		formatHelpWindow = AceGUI:Create("Window");
+		formatHelpWindow:SetTitle("Format String Help");
+		formatHelpWindow:SetWidth(600);
+		formatHelpWindow:SetHeight(500);
+		formatHelpWindow:SetLayout("Fill");
+		formatHelpWindow.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+	else
+		-- Create as a simple frame attached to the options window
+		formatHelpWindow = AceGUI:Create("Frame");
+		formatHelpWindow:SetTitle("Format String Help");
+		formatHelpWindow:SetWidth(600);
+		formatHelpWindow:SetHeight(500);
+		formatHelpWindow:SetLayout("Fill");
+		
+		-- Parent and position relative to options dialog
+		formatHelpWindow.frame:SetParent(parentFrame.frame);
+		formatHelpWindow.frame:SetFrameStrata("FULLSCREEN_DIALOG");
+		-- Set frame level much higher to ensure it's on top
+		local parentLevel = parentFrame.frame:GetFrameLevel();
+		formatHelpWindow.frame:SetFrameLevel(parentLevel + 50);
+		-- Attach left border to right border of options panel
+		formatHelpWindow.frame:ClearAllPoints();
+		formatHelpWindow.frame:SetPoint("LEFT", parentFrame.frame, "RIGHT", 0, 0);
+	end
+	
+	formatHelpWindow:SetCallback("OnClose", function(widget)
+		AceGUI:Release(widget);
+		formatHelpWindow = nil;
+	end);
+	
+	-- Create scrollable frame for content
+	local scrollFrame = AceGUI:Create("ScrollFrame");
+	scrollFrame:SetLayout("List");
+	formatHelpWindow:AddChild(scrollFrame);
+	
+	-- Helper function to add a section
+	local function AddSection(title, content)
+		local heading = AceGUI:Create("Heading");
+		heading:SetText(title);
+		heading:SetFullWidth(true);
+		scrollFrame:AddChild(heading);
+		
+		local label = AceGUI:Create("Label");
+		label:SetText(content);
+		label:SetFullWidth(true);
+		scrollFrame:AddChild(label);
+		
+		-- Add spacing
+		local spacer = AceGUI:Create("Label");
+		spacer:SetText("");
+		spacer:SetFullWidth(true);
+		scrollFrame:AddChild(spacer);
+	end
+	
+	-- Add sections with better formatting
+	AddSection("Health Tokens", 
+		"{hp} - Current health\n" ..
+		"{hp:short} - Short format (e.g., 1.2K, 5.3M)\n" ..
+		"{hp:%} - Health percentage\n" ..
+		"{hp:%.0f} - Health percentage with 0 decimals\n" ..
+		"{hp:bln} - Uses BreakUpLargeNumbers\n" ..
+		"{hpmax} - Maximum health\n" ..
+		"{hpmax:short} - Maximum health (short format)");
+	
+	AddSection("Power Tokens", 
+		"{power} or {mana} - Current power/mana\n" ..
+		"{power:short} - Short format (e.g., 1.2K, 5.3M)\n" ..
+		"{power:%} - Power percentage\n" ..
+		"{power:bln} - Uses BreakUpLargeNumbers\n" ..
+		"{powermax} - Maximum power\n" ..
+		"{powermax:short} - Maximum power (short format)");
+	
+	AddSection("Icon Tokens", 
+		"{mark} - Raid target marker (uses current unit)\n" ..
+		"{mark:target} - Raid target marker for target\n" ..
+		"{combat} - Combat icon\n" ..
+		"{resting} - Resting icon (player only)\n" ..
+		"{dead} - Dead icon\n" ..
+		"{ghost} - Ghost icon\n" ..
+		"{classicon} - Class icon\n" ..
+		"{specicon} - Specialization icon");
+	
+	AddSection("Status Tokens", 
+		"{incombat} - In combat status\n" ..
+		"{group} - Group status\n" ..
+		"{role} - Role (Tank, Healer, DPS)\n" ..
+		"{pvp} - PvP status");
+	
+	AddSection("Unit Tokens", 
+		"{targetname} - Target name\n" ..
+		"{targetname:short} - Target name (short)\n" ..
+		"{targethealth} - Target health\n" ..
+		"{targetlevel} - Target level\n" ..
+		"{level} - Player level\n" ..
+		"{class} - Class name\n" ..
+		"{class:short} - Class name (short)");
+	
+	AddSection("Info Tokens", 
+		"{zone} - Current zone\n" ..
+		"{fps} - Frames per second\n" ..
+		"{latency} - Latency\n" ..
+		"{latency:local} - Local latency\n" ..
+		"{latency:world} - World latency\n" ..
+		"{latency:1f} - Latency with 1 decimal\n" ..
+		"{latency:world:1f} - World latency with 1 decimal\n" ..
+		"{time} - Current time\n" ..
+		"{time:12} - Current time (12-hour format)");
+	
+	AddSection("Examples", 
+		"You can combine tokens with arbitrary text:\n" ..
+		"  ({hp}) - Shows health in parentheses\n" ..
+		"  MP: {power} / {powermax} - Shows power with label\n" ..
+		"  {hp:short} / {hpmax:short} - Shows health range\n" ..
+		"  {combat} {hp:%}% - Shows combat icon and health %");
+	
+	formatHelpWindow:Show();
+end
+
 -- Migration: Ensure all existing texts have resourceType set to PERSONAL
 function TextOptions:MigrateTexts()
 	local db = addon.db and addon.db.profile and addon.db.profile.personalResource;
@@ -461,17 +603,18 @@ local function BuildTextEntryArgs(resourceType)
 						format = {
 							type = "input",
 							name = "Format String",
-							desc = "Format strings:\n" ..
-								"Health: {hp}, {hp:short}, {hp:%}, {hp:%.0f}, {hp:bln}, {hpmax}, {hpmax:short}\n" ..
-								"Power: {power} or {mana}, {power:short}, {power:%}, {power:bln}, {powermax}, {powermax:short}\n" ..
-								"Icons: {mark}, {mark:target}, {combat}, {resting}, {dead}, {ghost}\n" ..
-								"Status: {incombat}, {group}, {role}, {pvp}\n" ..
-								"Unit: {targetname}, {targetname:short}, {targethealth}, {targetlevel}, {level}, {class}, {class:short}\n" ..
-								"Info: {zone}, {fps}, {latency}, {latency:local}, {latency:world}, {latency:1f}, {latency:world:1f}, {time}, {time:12}\n" ..
-								"{hp:bln} uses BreakUpLargeNumbers\n" ..
-								"You can add arbitrary text, e.g.: '({hp})' or 'MP: {power} / {powermax}'",
+							desc = "Enter format string using tokens. Click the help icon for a complete reference.",
 							order = 1,
-							width = "double",
+							width = 1.8, -- Leave room for the button on the right
+						},
+						formatHelp = {
+							type = "execute",
+							name = "?",
+							desc = "Open format string help window",
+							func = ShowFormatHelpWindow,
+							order = 2,
+							width = 0.3, -- Slightly larger for better visibility
+							dialogControl = "Button", -- Ensure it's a button
 						},
 					},
 				},
