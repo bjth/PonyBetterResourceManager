@@ -88,7 +88,12 @@ local function EnsureHooks()
 		if Style and Style.UpdateHealthText then
 			hooksecurefunc(PersonalResourceDisplayMixin, "UpdateHealth", function(frame)
 				if IsModuleEnabled() then
-					Style:UpdateHealthText(frame, GetDB());
+					local db = GetDB();
+					Style:UpdateHealthText(frame, db);
+					-- Also update overheal and absorb bars
+					if Style.UpdateOverhealAbsorbBars then
+						Style:UpdateOverhealAbsorbBars(frame, db);
+					end
 				end
 			end);
 		end

@@ -16,6 +16,19 @@ local DataTokens = ns.DataTokens;
 local PowerColor = ns.PowerColor;
 local BarStyling = ns.BarStyling;
 
+-- Helper function to get status bar texture (similar to BarStyling)
+local function GetStatusBarTexture(key)
+	if not LSM then
+		return nil;
+	end
+	
+	if not key or key == "" then
+		key = "Blizzard";
+	end
+	
+	return LSM:Fetch("statusbar", key);
+end
+
 function Style:ApplyHealthBarStyle(frame, db)
 	if not frame or not db then
 		return;
@@ -39,6 +52,16 @@ function Style:ApplyHealthBarStyle(frame, db)
 				healthBar:SetHeight(db.healthHeight);
 			end
 		end
+	end
+
+	-- Apply overheal bar styling
+	if frame.overhealBar then
+		self:ApplyOverhealBarStyle(frame, db);
+	end
+	
+	-- Apply absorb bar styling
+	if frame.absorbBar then
+		self:ApplyAbsorbBarStyle(frame, db);
 	end
 
 	-- Ensure the health text is updated whenever we (re)style the bar.
@@ -385,6 +408,79 @@ function Style:ApplyPowerBarStyle(frame, db)
 	end
 
 	self:UpdatePowerText(frame, db);
+end
+
+function Style:ApplyOverhealBarStyle(frame, db)
+	if not frame or not db or not frame.overhealBar then
+		return;
+	end
+	
+	local overhealBar = frame.overhealBar;
+	
+	-- Apply texture (overhealBar is a status bar, so use SetStatusBarTexture)
+	local textureKey = db.overhealTexture;
+	if textureKey and textureKey ~= "" then
+		local texture = GetStatusBarTexture(textureKey);
+		if texture then
+			overhealBar:SetStatusBarTexture(texture);
+		end
+	else
+		-- Use default texture (same as health bar)
+		if frame.healthbar then
+			local defaultTexture = frame.healthbar:GetStatusBarTexture();
+			if defaultTexture then
+				overhealBar:SetStatusBarTexture(defaultTexture);
+			else
+				overhealBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+			end
+		end
+	end
+	
+	-- Apply color (use SetStatusBarColor for status bars)
+	local color = db.overhealColor;
+	if color then
+		local r = color.r or 0.0;
+		local g = color.g or 0.659;
+		local b = color.b or 0.608;
+		local a = color.a or 1.0;
+		overhealBar:SetStatusBarColor(r, g, b, a);
+	end
+end
+
+function Style:ApplyAbsorbBarStyle(frame, db)
+	if not frame or not db or not frame.absorbBar then
+		return;
+	end
+	
+	local absorbBar = frame.absorbBar;
+	
+	-- Apply texture (absorbBar is a status bar, so use SetStatusBarTexture)
+	local textureKey = db.absorbTexture;
+	if textureKey and textureKey ~= "" then
+		local texture = GetStatusBarTexture(textureKey);
+		if texture then
+			absorbBar:SetStatusBarTexture(texture);
+		end
+	else
+		-- Use default texture (Blizzard's shield texture)
+		absorbBar:SetStatusBarTexture("Interface\\RaidFrame\\Shield-Fill");
+	end
+	
+	-- Hide the status bar's built-in background (the unfilled portion) so it doesn't cover the health bar
+	-- Status bars have a Background property that shows the unfilled portion
+	if absorbBar.Background then
+		absorbBar.Background:Hide();
+	end
+	
+	-- Apply color (use SetStatusBarColor for status bars)
+	local color = db.absorbColor;
+	if color then
+		local r = color.r or 0.0;
+		local g = color.g or 0.8;
+		local b = color.b or 1.0;
+		local a = color.a or 1.0;
+		absorbBar:SetStatusBarColor(r, g, b, a);
+	end
 end
 
 function Style:ApplyAll(frame, db)

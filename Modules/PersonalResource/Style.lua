@@ -16,6 +16,24 @@ local DataTokens = ns.DataTokens;
 local PowerColor = ns.PowerColor;
 local BarStyling = ns.BarStyling;
 
+-- Helper function to get status bar texture (similar to TargetResource)
+local function GetStatusBarTexture(key)
+	if not LSM then
+		return nil;
+	end
+	
+	if not key or key == "" then
+		key = "Blizzard";
+	end
+	
+	return LSM:Fetch("statusbar", key);
+end
+
+-- Blizzard's Personal Resource Display uses these textures on the health bar:
+-- myHealPrediction - Texture for my incoming heals (overheal)
+-- otherHealPrediction - Texture for other incoming heals
+-- totalAbsorb - Texture for absorb shields
+
 function Style:ApplyHealthBarStyle(frame, db)
 	if not frame or not db then
 		return;
@@ -28,6 +46,31 @@ function Style:ApplyHealthBarStyle(frame, db)
 	-- Use shared bar styling module
 	if BarStyling then
 		BarStyling:ApplyHealthBarStyle(frame, frame.healthbar, frame.HealthBarsContainer, db, "player");
+	end
+
+	-- Style Blizzard's existing overheal and absorb textures
+	-- Blizzard uses: myHealPrediction, otherHealPrediction (for overheal), and totalAbsorb (for absorb)
+	local healthBar = frame.healthbar;
+	
+	-- Apply overheal styling (myHealPrediction and otherHealPrediction)
+	if healthBar.myHealPrediction and healthBar.otherHealPrediction then
+		if db.showOverheal ~= false then
+			self:ApplyOverhealBarStyle(healthBar.myHealPrediction, healthBar.otherHealPrediction, db, healthBar);
+		else
+			-- Hide if disabled
+			healthBar.myHealPrediction:Hide();
+			healthBar.otherHealPrediction:Hide();
+		end
+	end
+	
+	-- Apply absorb styling (totalAbsorb)
+	if healthBar.totalAbsorb then
+		if db.showAbsorb ~= false then
+			self:ApplyAbsorbBarStyle(healthBar.totalAbsorb, db, healthBar);
+		else
+			-- Hide if disabled
+			healthBar.totalAbsorb:Hide();
+		end
 	end
 
 	-- Ensure the health text is updated whenever we (re)style the bar.
@@ -538,6 +581,98 @@ function Style:ApplyClassResourceStyle(frame, db)
 	end
 end
 
+-- Update overheal and absorb bars styling after Blizzard updates them
+function Style:UpdateOverhealAbsorbBars(frame, db)
+	if not frame or not db or not frame.healthbar then
+		return;
+	end
+	
+	local healthBar = frame.healthbar;
+	
+	-- Apply styling to overheal textures if they exist and are enabled
+	if healthBar.myHealPrediction and healthBar.otherHealPrediction then
+		if db.showOverheal ~= false then
+			self:ApplyOverhealBarStyle(healthBar.myHealPrediction, healthBar.otherHealPrediction, db, healthBar);
+		else
+			-- Hide if disabled
+			healthBar.myHealPrediction:Hide();
+			healthBar.otherHealPrediction:Hide();
+		end
+	end
+	
+	-- Apply styling to absorb texture if it exists and is enabled
+	if healthBar.totalAbsorb then
+		if db.showAbsorb ~= false then
+			self:ApplyAbsorbBarStyle(healthBar.totalAbsorb, db, healthBar);
+		else
+			-- Hide if disabled
+			healthBar.totalAbsorb:Hide();
+		end
+	end
+end
+
+function Style:ApplyOverhealBarStyle(myHealPrediction, otherHealPrediction, db, healthBar)
+	if not myHealPrediction or not otherHealPrediction or not db then
+		return;
+	end
+	
+	-- Apply texture to both overheal textures
+	local textureKey = db.overhealTexture;
+	if textureKey and textureKey ~= "" then
+		local texture = GetStatusBarTexture(textureKey);
+		if texture then
+			myHealPrediction:SetTexture(texture);
+			otherHealPrediction:SetTexture(texture);
+		end
+	elseif healthBar then
+		-- Use default texture (same as health bar)
+		local healthTexture = healthBar:GetStatusBarTexture();
+		if healthTexture then
+			myHealPrediction:SetTexture(healthTexture);
+			otherHealPrediction:SetTexture(healthTexture);
+		end
+	end
+	
+	-- Apply color to both overheal textures
+	local color = db.overhealColor;
+	if color then
+		local r = color.r or 0.0;
+		local g = color.g or 0.659;
+		local b = color.b or 0.608;
+		local a = color.a or 1.0;
+		myHealPrediction:SetVertexColor(r, g, b, a);
+		otherHealPrediction:SetVertexColor(r, g, b, a);
+	end
+end
+
+function Style:ApplyAbsorbBarStyle(totalAbsorb, db, healthBar)
+	if not totalAbsorb or not db then
+		return;
+	end
+	
+	-- Apply texture
+	local textureKey = db.absorbTexture;
+	if textureKey and textureKey ~= "" then
+		local texture = GetStatusBarTexture(textureKey);
+		if texture then
+			totalAbsorb:SetTexture(texture);
+		end
+	else
+		-- Use default texture (Blizzard's shield texture)
+		totalAbsorb:SetTexture("Interface\\RaidFrame\\Shield-Fill");
+	end
+	
+	-- Apply color
+	local color = db.absorbColor;
+	if color then
+		local r = color.r or 0.0;
+		local g = color.g or 0.8;
+		local b = color.b or 1.0;
+		local a = color.a or 1.0;
+		totalAbsorb:SetVertexColor(r, g, b, a);
+	end
+end
+
 function Style:ApplyAll(frame, db)
 	self:ApplyHealthBarStyle(frame, db);
 	self:ApplyPowerBarStyle(frame, db);
@@ -550,6 +685,9 @@ function Style:ApplyAll(frame, db)
 	-- Update text displays
 	self:UpdateHealthText(frame, db);
 	self:UpdatePowerText(frame, db);
+	
+	-- Update overheal and absorb bars styling (Blizzard handles the updates, we just style them)
+	self:UpdateOverhealAbsorbBars(frame, db);
 	
 	-- Clean up font strings that are no longer used
 	if frame._PBRMTexts then

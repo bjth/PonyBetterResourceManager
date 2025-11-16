@@ -66,6 +66,36 @@ function TargetResource:CreateFrame()
 	healthBar:SetPoint("CENTER", healthContainer, "CENTER", 0, 0);
 	frame.healthbar = healthBar;
 	
+	-- Create overheal bar as a status bar (can handle secret values)
+	-- Will be anchored to the right edge of the health bar in UpdateTargetHealth
+	local overhealBar = CreateFrame("StatusBar", nil, healthContainer);
+	overhealBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+	overhealBar:SetStatusBarColor(0.0, 0.659, 0.608);
+	overhealBar:SetFrameLevel(healthBar:GetFrameLevel() + 1);
+	-- Hide the background by making it transparent
+	-- Status bars don't have a direct background property, but we can hide the empty portion
+	-- by ensuring the bar only shows when there's a value
+	overhealBar:Hide();
+	frame.overhealBar = overhealBar;
+	
+	-- Create absorb bar as a status bar (can handle secret values)
+	-- Will be anchored to the right edge of the health bar and fill leftward
+	local absorbBar = CreateFrame("StatusBar", nil, healthContainer);
+	absorbBar:SetStatusBarTexture("Interface\\RaidFrame\\Shield-Fill");
+	absorbBar:SetStatusBarColor(0.0, 0.8, 1.0);
+	absorbBar:SetFrameLevel(healthBar:GetFrameLevel() + 2);
+	-- Set reverse fill so it grows from right to left
+	if absorbBar.SetReverseFill then
+		absorbBar:SetReverseFill(true);
+	end
+	-- Hide the status bar's built-in background (the unfilled portion) so it doesn't cover the health bar
+	-- Status bars have a Background property that shows the unfilled portion
+	if absorbBar.Background then
+		absorbBar.Background:Hide();
+	end
+	absorbBar:Hide();
+	frame.absorbBar = absorbBar;
+	
 	-- Create power bar
 	local powerBar = CreateFrame("StatusBar", nil, frame);
 	powerBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
@@ -178,6 +208,8 @@ function TargetResource:OnEnable()
 	self:RegisterEvent("UNIT_POWER_UPDATE", "UNIT_POWER_UPDATE");
 	self:RegisterEvent("UNIT_MAXPOWER", "UNIT_MAXPOWER");
 	self:RegisterEvent("UNIT_DISPLAYPOWER", "UNIT_DISPLAYPOWER");
+	self:RegisterEvent("UNIT_HEAL_PREDICTION", "UNIT_HEAL_PREDICTION");
+	self:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_ABSORB_AMOUNT_CHANGED");
 	
 	-- Listen for Edit Mode events via EventRegistry
 	if EventRegistry then
@@ -232,6 +264,8 @@ function TargetResource:OnDisable()
 	self:UnregisterEvent("UNIT_POWER_UPDATE");
 	self:UnregisterEvent("UNIT_MAXPOWER");
 	self:UnregisterEvent("UNIT_DISPLAYPOWER");
+	self:UnregisterEvent("UNIT_HEAL_PREDICTION");
+	self:UnregisterEvent("UNIT_ABSORB_AMOUNT_CHANGED");
 end
 
 function TargetResource:PLAYER_TARGET_CHANGED()
@@ -265,6 +299,18 @@ end
 function TargetResource:UNIT_DISPLAYPOWER(event, unit)
 	if unit == "target" then
 		self:UpdateTargetPower();
+	end
+end
+
+function TargetResource:UNIT_HEAL_PREDICTION(event, unit)
+	if unit == "target" then
+		self:UpdateTargetHealth();
+	end
+end
+
+function TargetResource:UNIT_ABSORB_AMOUNT_CHANGED(event, unit)
+	if unit == "target" then
+		self:UpdateTargetHealth();
 	end
 end
 
@@ -333,6 +379,16 @@ function TargetResource:UpdateTargetDisplay()
 	local db = GetDB();
 	if Style and Style.ApplyAll and db then
 		Style:ApplyAll(frame, db);
+		-- Re-apply health bar color after styling to ensure it's correct
+		-- This is important because ApplyAbsorbBarStyle might have been called
+		local BarStyling = ns.BarStyling;
+		if BarStyling and frame.healthbar then
+			BarStyling:ApplyBarVisuals(frame.healthbar, db.healthTexture, db.healthColor, db.overrideHealthColor);
+			-- If not overriding, restore Blizzard's default health color
+			if not db.overrideHealthColor then
+				frame.healthbar:SetStatusBarColor(0.0, 0.8, 0.0);
+			end
+		end
 	end
 end
 
@@ -354,9 +410,84 @@ function TargetResource:UpdateTargetHealth()
 	frame.healthbar:SetMinMaxValues(0, maxHealth);
 	frame.healthbar:SetValue(health);
 	
-	-- Update text if enabled
-	local Style = ns.TargetResourceStyle;
+	-- Update overheal and absorb bars using status bars
+	-- Status bars can handle secret values in SetValue and SetMinMaxValues
+	-- They will automatically calculate the fill width based on value/max
 	local db = GetDB();
+	local _, totalMax = frame.healthbar:GetMinMaxValues();
+	local healthBar = frame.healthbar;
+	local container = frame.HealthBarsContainer;
+	local barWidth = container and container:GetWidth() or 200;
+	local barHeight = container and container:GetHeight() or 20;
+	
+	-- Update overheal bar
+	-- Overheal extends to the right of the health bar, showing incoming heals beyond max health
+	-- Use same min/max as health bar, set value to incomingHeal
+	-- The bar will automatically size based on incomingHeal/totalMax
+	if frame.overhealBar and db and db.showOverheal ~= false then
+		local incomingHeal = UnitGetIncomingHeals("target");
+		if incomingHeal ~= nil and totalMax ~= nil and healthBar then
+			-- Use same scale as health bar so the bar sizes correctly
+			frame.overhealBar:SetMinMaxValues(0, totalMax);
+			frame.overhealBar:SetValue(incomingHeal);
+			-- Position to the right of the health bar frame
+			frame.overhealBar:ClearAllPoints();
+			frame.overhealBar:SetPoint("TOPLEFT", healthBar, "TOPRIGHT", 0, 0);
+			frame.overhealBar:SetPoint("BOTTOMLEFT", healthBar, "BOTTOMRIGHT", 0, 0);
+			-- Set width to match container so the bar fills proportionally
+			frame.overhealBar:SetWidth(barWidth);
+			frame.overhealBar:SetHeight(barHeight);
+			frame.overhealBar:Show();
+		else
+			frame.overhealBar:Hide();
+		end
+	elseif frame.overhealBar then
+		frame.overhealBar:Hide();
+	end
+	
+	-- Update absorb bar
+	-- Absorb overlays the health bar, anchored to the right edge and growing leftward
+	-- Use same min/max as health bar, set value to totalAbsorb
+	-- The bar will automatically size based on totalAbsorb/totalMax
+	if frame.absorbBar and db and db.showAbsorb ~= false then
+		local totalAbsorb = UnitGetTotalAbsorbs("target");
+		if totalAbsorb ~= nil and totalMax ~= nil and healthBar then
+			-- Use same scale as health bar so the bar sizes correctly
+			frame.absorbBar:SetMinMaxValues(0, totalMax);
+			frame.absorbBar:SetValue(totalAbsorb);
+			-- Anchor the right edge of absorb bar to the right edge of health bar
+			-- With reverse fill, it will grow leftward from the right edge
+			frame.absorbBar:ClearAllPoints();
+			frame.absorbBar:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 0);
+			frame.absorbBar:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", 0, 0);
+			-- Set width to match health bar so it can overlay properly
+			frame.absorbBar:SetWidth(barWidth);
+			frame.absorbBar:SetHeight(barHeight);
+			-- Ensure the background is hidden (in case it was shown again)
+			if frame.absorbBar.Background then
+				frame.absorbBar.Background:Hide();
+			end
+			frame.absorbBar:Show();
+		else
+			frame.absorbBar:Hide();
+		end
+	elseif frame.absorbBar then
+		frame.absorbBar:Hide();
+	end
+	
+	-- Re-apply health bar color after updating absorb bar to ensure it's not covered
+	-- This ensures the health bar color is correct even when absorb bar overlays it
+	local BarStyling = ns.BarStyling;
+	if BarStyling and db then
+		-- Only re-apply the color, not the full style (to avoid recursion)
+		BarStyling:ApplyBarVisuals(healthBar, db.healthTexture, db.healthColor, db.overrideHealthColor);
+		-- If not overriding, restore Blizzard's default health color
+		if not db.overrideHealthColor then
+			healthBar:SetStatusBarColor(0.0, 0.8, 0.0);
+		end
+	end
+	
+	-- Update text if enabled
 	if Style and Style.UpdateHealthText and db then
 		Style:UpdateHealthText(frame, db);
 	end
