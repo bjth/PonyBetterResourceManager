@@ -249,6 +249,45 @@ function TargetResource:OnEnable()
 		end
 	end
 	
+	-- Handle TargetFrame visibility on initialization
+	local db = GetDB();
+	if db then
+		local function setupTargetFrameHook()
+			local targetFrame = _G.TargetFrame;
+			if targetFrame then
+				-- Hook Show method to prevent TargetFrame from showing when option is enabled
+				if not targetFrame._PBRMShowHookSet then
+					targetFrame._PBRMShowHookSet = true;
+					hooksecurefunc(targetFrame, "Show", function(self)
+						local db = GetDB();
+						if db and db.hideTargetFrame then
+							-- Immediately hide if option is enabled
+							self:Hide();
+						end
+					end);
+				end
+				
+				if db.hideTargetFrame then
+					targetFrame:Hide();
+				else
+					-- Only show TargetFrame if there's actually a target
+					-- Blizzard will handle the rest of the visibility logic
+					if UnitExists("target") then
+						targetFrame:Show();
+					else
+						targetFrame:Hide();
+					end
+				end
+			end
+		end
+		
+		-- Try immediately
+		setupTargetFrameHook();
+		
+		-- Also try after a delay in case TargetFrame isn't created yet
+		C_Timer.After(0.5, setupTargetFrameHook);
+	end
+	
 	-- Update display (will show/hide based on target and Edit Mode state)
 	self:UpdateTargetDisplay();
 end
@@ -269,6 +308,20 @@ function TargetResource:OnDisable()
 end
 
 function TargetResource:PLAYER_TARGET_CHANGED()
+	-- Update TargetFrame visibility when target changes
+	local db = GetDB();
+	if db then
+		local targetFrame = _G.TargetFrame;
+		if targetFrame and not db.hideTargetFrame then
+			-- Only show TargetFrame if there's actually a target
+			if UnitExists("target") then
+				targetFrame:Show();
+			else
+				targetFrame:Hide();
+			end
+		end
+	end
+	
 	self:UpdateTargetDisplay();
 end
 
@@ -543,8 +596,38 @@ function TargetResource:RefreshFromConfig()
 		return;
 	end
 	
-	local Style = ns.TargetResourceStyle;
+	-- Handle TargetFrame visibility
 	local db = GetDB();
+	if db then
+		local targetFrame = _G.TargetFrame;
+		if targetFrame then
+			-- Ensure hook is set up (in case option was changed after initialization)
+			if not targetFrame._PBRMShowHookSet then
+				targetFrame._PBRMShowHookSet = true;
+				hooksecurefunc(targetFrame, "Show", function(self)
+					local db = GetDB();
+					if db and db.hideTargetFrame then
+						-- Immediately hide if option is enabled
+						self:Hide();
+					end
+				end);
+			end
+			
+			if db.hideTargetFrame then
+				targetFrame:Hide();
+			else
+				-- Only show TargetFrame if there's actually a target
+				-- Blizzard will handle the rest of the visibility logic
+				if UnitExists("target") then
+					targetFrame:Show();
+				else
+					targetFrame:Hide();
+				end
+			end
+		end
+	end
+	
+	local Style = ns.TargetResourceStyle;
 	
 	if Style and Style.ApplyAll and db then
 		Style:ApplyAll(frame, db);

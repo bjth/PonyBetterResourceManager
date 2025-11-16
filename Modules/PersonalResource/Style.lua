@@ -341,6 +341,15 @@ local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurre
 						Style:UpdatePowerText(frameRef, db);
 					end
 				end
+				
+				-- Also reapply power bar styling immediately after value changes
+				-- This fires after Blizzard's UpdatePower completes, eliminating flicker
+				if storedTargetType == "POWER" and Style and Style.ApplyPowerBarStyle and db then
+					local styleFrameRef = self._PBRMStyleFrameRef or frameRef;
+					if styleFrameRef then
+						Style:ApplyPowerBarStyle(styleFrameRef, db);
+					end
+				end
 			end
 		end);
 	end

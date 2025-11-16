@@ -62,11 +62,22 @@ function TargetOptions:BuildOptions()
 		get = Get,
 		set = Set,
 		args = {
+			generalHeader = {
+				type = "header",
+				name = "General",
+				order = 1,
+			},
 			enabled = {
 				type = "toggle",
 				name = "Enable Target Resource Display",
 				desc = "Show a resource display for your target (similar to the personal resource display).",
-				order = 1,
+				order = 2,
+			},
+			hideTargetFrame = {
+				type = "toggle",
+				name = "Hide Target Frame",
+				desc = "Hide the built-in Target frame (TargetFrame) since we are replacing it with the Target Resource Display.",
+				order = 3,
 			},
 			divider1 = {
 				type = "header",

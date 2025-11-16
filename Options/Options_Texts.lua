@@ -295,7 +295,7 @@ local function BuildTextEntryArgs(resourceType)
 				if entryLocal then
 					local name = entryLocal.name or "";
 					local target = entryLocal.target or "HEALTH";
-					local enabled = entryLocal.enabled ~= false and "✓" or "✗";
+					local enabled = entryLocal.enabled ~= false and "[ON]" or "[OFF]";
 					if name and name ~= "" then
 						return string.format("%s %s", enabled, name);
 					else

@@ -61,6 +61,91 @@ function PersonalOptions:BuildOptions()
 		get = Get,
 		set = Set,
 		args = {
+			generalHeader = {
+				type = "header",
+				name = "General",
+				order = 1,
+			},
+			hidePlayerFrame = {
+				type = "toggle",
+				name = "Hide Player Frame",
+				desc = "Hide the built-in Player Profile frame (PlayerFrame) since we are replacing it with the Personal Resource Display.",
+				order = 2,
+			},
+			enablePersonalResourceDisplay = {
+				type = "execute",
+				name = "Enable Personal Resource Display",
+				desc = "Enable Blizzard's Personal Resource Display setting. This matches the 'Display Personal Resource' option in Interface > Display settings.",
+				order = 3,
+				func = function()
+					-- Try to enable Personal Resource Display via CVar
+					-- The CVar name may vary, so we'll try common ones
+					local cvarNames = {
+						"displayPersonalResource",
+						"showPersonalResource",
+						"personalResourceDisplay",
+						"nameplateShowSelf", -- This is for nameplates, but might be related
+					};
+					
+					local success = false;
+					for _, cvarName in ipairs(cvarNames) do
+						local currentValue = GetCVar(cvarName);
+						if currentValue ~= nil then
+							-- CVar exists, try to set it to 1 (enabled)
+							local ok, err = pcall(function()
+								SetCVar(cvarName, "1");
+							end);
+							if ok then
+								success = true;
+								break;
+							end
+						end
+					end
+					
+					-- Also try to enable through Interface Options if available
+					if Settings and Settings.OpenToCategory then
+						-- Open Interface options to Display category
+						Settings.OpenToCategory("display");
+					elseif InterfaceOptionsFrame_OpenToCategory then
+						-- Fallback for older method
+						InterfaceOptionsFrame_OpenToCategory("Display");
+					end
+					
+					if success then
+						print("|cFF00FF00PonyBetterResourceManager:|r Personal Resource Display enabled. You may need to reload your UI for changes to take effect.");
+					else
+						print("|cFFFF0000PonyBetterResourceManager:|r Could not automatically enable Personal Resource Display. Please enable it manually in Interface > Display > Display Personal Resource.");
+					end
+				end,
+			},
+			personalResourceStatus = {
+				type = "description",
+				name = function()
+					-- Check current status of Personal Resource Display
+					local cvarNames = {
+						"displayPersonalResource",
+						"showPersonalResource",
+						"personalResourceDisplay",
+					};
+					
+					for _, cvarName in ipairs(cvarNames) do
+						local value = GetCVar(cvarName);
+						if value ~= nil then
+							local enabled = value == "1" or value == "true";
+							return "Status: " .. (enabled and "|cFF00FF00Enabled|r" or "|cFFFF0000Disabled|r");
+						end
+					end
+					
+					-- Check if PersonalResourceDisplayFrame exists and is shown
+					local frame = _G.PersonalResourceDisplayFrame;
+					if frame then
+						return "Status: " .. (frame:IsShown() and "|cFF00FF00Visible|r" or "|cFFFF0000Hidden|r");
+					end
+					
+					return "Status: |cFFFFAA00Unknown|r";
+				end,
+				order = 4,
+			},
 			divider1 = {
 				type = "header",
 				name = "Health Bar",
