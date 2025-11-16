@@ -30,6 +30,11 @@ function addon:OnInitialize()
 	local defaults = ns.Defaults or {};
 	self.db = AceDB:New("PonyBetterResourceManagerDB", defaults, true);
 
+	-- Migrate existing texts to have resourceType field
+	if ns.PersonalResourceTextOptions and ns.PersonalResourceTextOptions.MigrateTexts then
+		ns.PersonalResourceTextOptions:MigrateTexts();
+	end
+
 	-- Set up options UI once the DB exists.
 	if ns.Options and ns.Options.Initialize then
 		ns.Options:Initialize();
@@ -43,6 +48,11 @@ function addon:OnEnable()
 	-- Hook Edit Mode systems.
 	if ns.EditMode and ns.EditMode.InitPersonalResourceSystem then
 		ns.EditMode:InitPersonalResourceSystem();
+	end
+	
+	-- Initialize Edit Mode integration for Target Resource
+	if ns.EditModeTargetResource and ns.EditModeTargetResource.Init then
+		ns.EditModeTargetResource:Init();
 	end
 end
 
@@ -61,6 +71,21 @@ function addon:NotifyConfigChanged()
 	local personalModule = self:GetModule("PersonalResource", true);
 	if personalModule and personalModule.RefreshFromConfig then
 		SafeCall(personalModule.RefreshFromConfig, personalModule);
+	end
+	
+	local targetModule = self:GetModule("TargetResource", true);
+	if targetModule then
+		-- Check if module should be enabled/disabled
+		local profile = self.db and self.db.profile;
+		local shouldBeEnabled = profile and profile.targetResource and profile.targetResource.enabled == true;
+		
+		if shouldBeEnabled and not targetModule:IsEnabled() then
+			targetModule:Enable();
+		elseif not shouldBeEnabled and targetModule:IsEnabled() then
+			targetModule:Disable();
+		elseif targetModule.RefreshFromConfig then
+			SafeCall(targetModule.RefreshFromConfig, targetModule);
+		end
 	end
 end
 

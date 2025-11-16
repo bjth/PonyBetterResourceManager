@@ -9,67 +9,12 @@ ns.PersonalResourceStyle = Style;
 local BreakUpLargeNumbers = BreakUpLargeNumbers;
 local AbbreviateLargeNumbers = AbbreviateLargeNumbers or BreakUpLargeNumbers;
 
--- Get the TextTokens system
-local TextTokens = ns.PersonalResourceTextTokens;
+-- Get the DataTokens system
+local DataTokens = ns.DataTokens;
 
-local function GetStatusBarTexture(key)
-	if not LSM then
-		return nil;
-	end
-
-	if not key or key == "" then
-		key = "Blizzard";
-	end
-
-	return LSM:Fetch("statusbar", key);
-end
-
-local function ApplyBarVisuals(statusBar, textureKey, colorConfig, overrideColor)
-	if not statusBar then
-		return;
-	end
-
-	local texture = GetStatusBarTexture(textureKey);
-	if texture then
-		statusBar:SetStatusBarTexture(texture);
-	end
-
-	-- For Midnight, match Blizzard's usage: only pass plain RGB(A) numbers when we actively override.
-	if overrideColor and colorConfig then
-		local r = colorConfig.r or 1;
-		local g = colorConfig.g or 1;
-		local b = colorConfig.b or 1;
-		local a = colorConfig.a;
-
-		if a ~= nil then
-			statusBar:SetStatusBarColor(r, g, b, a);
-		else
-			statusBar:SetStatusBarColor(r, g, b);
-		end
-	end
-end
-
-local function ApplyBorderSettings(border, style, color, size)
-	if not border then
-		return;
-	end
-
-	if style == "None" then
-		border:Hide();
-		return;
-	end
-
-	border:Show();
-
-	if color then
-		border:SetVertexColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1);
-		border:SetAlpha(color.a or 1);
-	end
-
-	if size and size > 0 then
-		border:SetScale(size);
-	end
-end
+-- Get shared utilities
+local PowerColor = ns.PowerColor;
+local BarStyling = ns.BarStyling;
 
 function Style:ApplyHealthBarStyle(frame, db)
 	if not frame or not db then
@@ -80,68 +25,9 @@ function Style:ApplyHealthBarStyle(frame, db)
 		return;
 	end
 
-	-- Border alpha tweak.
-	if frame.HealthBarsContainer.border then
-		frame.HealthBarsContainer.border:SetAlpha(db.borderAlpha or 0.5);
-	end
-
-	-- Apply texture and optional override color.
-	ApplyBarVisuals(frame.healthbar, db.healthTexture, db.healthColor, db.overrideHealthColor);
-
-	-- If not overriding, restore Blizzard's default health color.
-	if not db.overrideHealthColor then
-		frame.healthbar:SetStatusBarColor(0.0, 0.8, 0.0);
-	end
-
-	-- Border styling for the health container.
-	if frame.HealthBarsContainer.border then
-		ApplyBorderSettings(frame.HealthBarsContainer.border, db.healthBorderStyle, db.healthBorderColor, db.healthBorderSize);
-	end
-
-	-- Cache original anchors once so we can safely override and restore.
-	local container = frame.HealthBarsContainer;
-	if not container._PBRMOriginalPoints then
-		container._PBRMOriginalPoints = {};
-		for i = 1, container:GetNumPoints() do
-			local p, relTo, relPoint, x, y = container:GetPoint(i);
-			table.insert(container._PBRMOriginalPoints, { p, relTo, relPoint, x, y });
-		end
-	end
-
-	-- Optional explicit sizing on top of Blizzard's layout.
-	-- To make width adjustable, we need to break the left/right anchors and anchor
-	-- the container by TOP relative to the PRD frame while keeping Edit Mode's
-	-- position on the parent frame.
-	if db.healthWidth and db.healthWidth > 0 then
-		container:ClearAllPoints();
-		container:SetPoint("TOP", frame, "TOP", 0, 0);
-		container:SetWidth(db.healthWidth);
-		if db.healthHeight and db.healthHeight > 0 then
-			container:SetHeight(db.healthHeight);
-		end
-	elseif db.healthHeight and db.healthHeight > 0 and container._PBRMOriginalPoints then
-		-- Only height override: preserve original anchors, just change height.
-		container:ClearAllPoints();
-		for _, pt in ipairs(container._PBRMOriginalPoints) do
-			container:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]);
-		end
-		container:SetHeight(db.healthHeight);
-	elseif container._PBRMOriginalPoints then
-		-- No overrides: restore Blizzard's original anchors and size.
-		container:ClearAllPoints();
-		for _, pt in ipairs(container._PBRMOriginalPoints) do
-			container:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]);
-		end
-	end
-
-	-- Respect user's preference to hide/show the health bar, layering on top of Blizzard rules.
-	if db.showHealthBar == false then
-		frame.HealthBarsContainer:Hide();
-	else
-		-- Only show if Blizzard isn't intentionally hiding health/power.
-		if not frame.hideHealthAndPower then
-			frame.HealthBarsContainer:Show();
-		end
+	-- Use shared bar styling module
+	if BarStyling then
+		BarStyling:ApplyHealthBarStyle(frame, frame.healthbar, frame.HealthBarsContainer, db, "player");
 	end
 
 	-- Ensure the health text is updated whenever we (re)style the bar.
@@ -267,7 +153,7 @@ local function FormatHealthCustom(template, hp, maxHp)
 	end
 
 	-- Use the modular token system to process the template
-	if TextTokens and TextTokens.ProcessTemplate then
+	if DataTokens and DataTokens.ProcessTemplate then
 		local context = {
 			hp = hp,
 			maxHp = maxHp,
@@ -277,15 +163,16 @@ local function FormatHealthCustom(template, hp, maxHp)
 			maxShort = maxShort,
 			pct = pct,
 			pctFormatted = pctFormatted,
+			unit = "player", -- Default unit for Personal Resource
 		};
-		return TextTokens:ProcessTemplate(template, context);
+		return DataTokens:ProcessTemplate(template, context);
 	else
 		-- Fallback: return empty string if token system not available
 		return "";
 	end
 end
 
-local function FormatPowerCustom(template, power, maxPower)
+local function FormatPowerCustom(template, power, maxPower, unit)
 	if not template or template == "" then
 		return "";
 	end
@@ -346,7 +233,7 @@ local function FormatPowerCustom(template, power, maxPower)
 	end
 
 	-- Use the modular token system to process the template
-	if TextTokens and TextTokens.ProcessTemplate then
+	if DataTokens and DataTokens.ProcessTemplate then
 		local context = {
 			power = power,
 			maxPower = maxPower,
@@ -356,8 +243,9 @@ local function FormatPowerCustom(template, power, maxPower)
 			maxShort = maxShort,
 			pct = pct,
 			pctFormatted = pctFormatted,
+			unit = unit or "player", -- Use provided unit or default to "player"
 		};
-		return TextTokens:ProcessTemplate(template, context);
+		return DataTokens:ProcessTemplate(template, context);
 	else
 		-- Fallback: return empty string if token system not available
 		return "";
@@ -420,12 +308,15 @@ local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurre
 		return;
 	else
 		for index, entry in ipairs(texts) do
-			-- For backward compatibility, nil target defaults to HEALTH
-			local entryTarget = entry.target;
-			if targetType == "HEALTH" and entryTarget == nil then
-				entryTarget = "HEALTH";
-			end
-			if entry and entry.enabled ~= false and entryTarget == targetType then
+			-- Filter by resourceType: only show PERSONAL texts (or nil for backward compatibility)
+			local entryResourceType = entry.resourceType;
+			if not entryResourceType or entryResourceType == "PERSONAL" then
+				-- For backward compatibility, nil target defaults to HEALTH
+				local entryTarget = entry.target;
+				if targetType == "HEALTH" and entryTarget == nil then
+					entryTarget = "HEALTH";
+				end
+				if entry and entry.enabled ~= false and entryTarget == targetType then
 				-- Use a composite key: index + target type to avoid conflicts
 				local fsKey = index .. "_" .. targetType;
 				local fs = frame._PBRMTexts[fsKey];
@@ -501,6 +392,7 @@ local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurre
 				fs:Show();
 
 				frame._PBRMTextsUsed[fsKey] = true;
+				end
 			end
 		end
 	end
@@ -563,139 +455,9 @@ function Style:ApplyPowerBarStyle(frame, db)
 		return;
 	end
 
-	-- Cache original anchors once for relative offsets.
-	local bar = frame.PowerBar;
-	if not bar._PBRMOriginalPoints then
-		bar._PBRMOriginalPoints = {};
-		for i = 1, bar:GetNumPoints() do
-			local p, relTo, relPoint, x, y = bar:GetPoint(i);
-			table.insert(bar._PBRMOriginalPoints, { p, relTo, relPoint, x, y });
-		end
-	end
-
-	-- Apply texture and optional override color.
-	ApplyBarVisuals(bar, db.powerTexture, db.powerColor, db.overridePowerColor);
-
-	-- If not overriding, restore Blizzard's default power color logic.
-	if not db.overridePowerColor then
-		local powerType, powerToken, altR, altG, altB = UnitPowerType("player");
-		local info;
-		if powerToken then
-			if MANA_BAR_COLOR and MANA_BAR_COLOR[powerToken] then
-				info = MANA_BAR_COLOR[powerToken];
-			elseif PowerBarColor and PowerBarColor[powerToken] then
-				info = PowerBarColor[powerToken];
-			elseif altR then
-				info = { r = altR, g = altG, b = altB };
-			elseif PowerBarColor and PowerBarColor[powerType] then
-				info = PowerBarColor[powerType];
-			end
-		end
-
-		if info and info.r and info.g and info.b then
-			bar:SetStatusBarColor(info.r, info.g, info.b);
-		end
-	end
-
-	-- Border styling for the power bar.
-	if bar.Border then
-		-- Blizzard's border atlas isn't reliably tintable in Midnight. Hide it and draw a simple
-		-- rectangular border that we fully control.
-		if db.powerBorderStyle == "None" then
-			bar.Border:Hide();
-			if bar._PBRMBorderTop then
-				bar._PBRMBorderTop:Hide();
-				bar._PBRMBorderBottom:Hide();
-				bar._PBRMBorderLeft:Hide();
-				bar._PBRMBorderRight:Hide();
-			end
-		else
-			bar.Border:Hide();
-
-			local color = db.powerBorderColor or { r = 0, g = 0, b = 0, a = db.borderAlpha or 0.5 };
-			local thickness = (db.powerBorderSize or 1) * 2;
-
-			if not bar._PBRMBorderTop then
-				bar._PBRMBorderTop = bar:CreateTexture(nil, "OVERLAY");
-				bar._PBRMBorderBottom = bar:CreateTexture(nil, "OVERLAY");
-				bar._PBRMBorderLeft = bar:CreateTexture(nil, "OVERLAY");
-				bar._PBRMBorderRight = bar:CreateTexture(nil, "OVERLAY");
-			end
-
-			-- Top edge: sits just above the bar.
-			bar._PBRMBorderTop:ClearAllPoints();
-			bar._PBRMBorderTop:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, 0);
-			bar._PBRMBorderTop:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, 0);
-			bar._PBRMBorderTop:SetHeight(thickness);
-
-			-- Bottom edge: sits just below the bar.
-			bar._PBRMBorderBottom:ClearAllPoints();
-			bar._PBRMBorderBottom:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, 0);
-			bar._PBRMBorderBottom:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, 0);
-			bar._PBRMBorderBottom:SetHeight(thickness);
-
-			-- Left edge: spans exactly between top and bottom borders so corners meet.
-			bar._PBRMBorderLeft:ClearAllPoints();
-			bar._PBRMBorderLeft:SetPoint("TOPRIGHT", bar._PBRMBorderTop, "TOPLEFT", 0, 0);
-			bar._PBRMBorderLeft:SetPoint("BOTTOMRIGHT", bar._PBRMBorderBottom, "BOTTOMLEFT", 0, 0);
-			bar._PBRMBorderLeft:SetWidth(thickness);
-
-			-- Right edge: spans exactly between top and bottom borders so corners meet.
-			bar._PBRMBorderRight:ClearAllPoints();
-			bar._PBRMBorderRight:SetPoint("TOPLEFT", bar._PBRMBorderTop, "TOPRIGHT", 0, 0);
-			bar._PBRMBorderRight:SetPoint("BOTTOMLEFT", bar._PBRMBorderBottom, "BOTTOMRIGHT", 0, 0);
-			bar._PBRMBorderRight:SetWidth(thickness);
-
-			local r = color.r or 0;
-			local g = color.g or 0;
-			local b = color.b or 0;
-			local a = color.a or 1;
-
-			bar._PBRMBorderTop:SetColorTexture(r, g, b, a);
-			bar._PBRMBorderBottom:SetColorTexture(r, g, b, a);
-			bar._PBRMBorderLeft:SetColorTexture(r, g, b, a);
-			bar._PBRMBorderRight:SetColorTexture(r, g, b, a);
-
-			bar._PBRMBorderTop:Show();
-			bar._PBRMBorderBottom:Show();
-			bar._PBRMBorderLeft:Show();
-			bar._PBRMBorderRight:Show();
-		end
-	end
-
-	-- Optional explicit sizing and offsets relative to original anchors.
-	local hasSizeOverride = (db.powerWidth and db.powerWidth > 0) or (db.powerHeight and db.powerHeight > 0);
-	local hasOffset = (db.powerOffsetX and db.powerOffsetX ~= 0) or (db.powerOffsetY and db.powerOffsetY ~= 0);
-
-	if (hasSizeOverride or hasOffset) and bar._PBRMOriginalPoints then
-		bar:ClearAllPoints();
-		local ox = db.powerOffsetX or 0;
-		local oy = db.powerOffsetY or 0;
-		for _, pt in ipairs(bar._PBRMOriginalPoints) do
-			local p, relTo, relPoint, x, y = pt[1], pt[2], pt[3], pt[4] or 0, pt[5] or 0;
-			bar:SetPoint(p, relTo, relPoint, x + ox, y + oy);
-		end
-
-		if db.powerWidth and db.powerWidth > 0 then
-			bar:SetWidth(db.powerWidth);
-		end
-		if db.powerHeight and db.powerHeight > 0 then
-			bar:SetHeight(db.powerHeight);
-		end
-	elseif bar._PBRMOriginalPoints then
-		bar:ClearAllPoints();
-		for _, pt in ipairs(bar._PBRMOriginalPoints) do
-			bar:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5]);
-		end
-	end
-
-	-- Respect user's preference to hide/show the power bar, layering on top of Blizzard rules.
-	if db.showPowerBar == false then
-		frame.PowerBar:Hide();
-	else
-		if not frame.hideHealthAndPower then
-			frame.PowerBar:Show();
-		end
+	-- Use shared bar styling module
+	if BarStyling then
+		BarStyling:ApplyPowerBarStyle(frame, frame.PowerBar, db, "player");
 	end
 end
 
@@ -708,11 +470,14 @@ function Style:ApplyAlternatePowerStyle(frame, db)
 		return;
 	end
 
+	-- Border alpha is now handled per-border via border color alpha
 	if frame.AlternatePowerBar.Border then
-		frame.AlternatePowerBar.Border:SetAlpha(db.borderAlpha or 0.5);
+		frame.AlternatePowerBar.Border:SetAlpha(0.5);
 	end
 
-	ApplyBarVisuals(frame.AlternatePowerBar, db.alternatePowerTexture, nil, false);
+	if BarStyling then
+		BarStyling:ApplyBarVisuals(frame.AlternatePowerBar, db.alternatePowerTexture, nil, false);
+	end
 
 	if db.showAlternatePowerBar == false then
 		frame.AlternatePowerBar:Hide();
@@ -847,7 +612,10 @@ function Style:SetupDynamicTokenUpdates(frame, db)
 						local texts = dbLocal.texts;
 						if type(texts) == "table" then
 							for index, entry in ipairs(texts) do
-								if entry and entry.enabled ~= false and entry.format and HasDynamicTokens(entry.format) then
+								-- Filter by resourceType: only show PERSONAL texts (or nil for backward compatibility)
+								local entryResourceType = entry.resourceType;
+								if (not entryResourceType or entryResourceType == "PERSONAL") and 
+								   entry and entry.enabled ~= false and entry.format and HasDynamicTokens(entry.format) then
 									local entryTarget = entry.target;
 									if entryTarget == nil then
 										entryTarget = "HEALTH"; -- Default to health for backward compatibility

@@ -23,20 +23,33 @@ Core\Core.lua
 Core\Config.lua
 Core\Media.lua
 Core\EditMode.lua
+Core\EditModeHelper.lua
+Core\EditMode_TargetResource.lua
+
+Modules\Shared\PowerColor.lua
+Modules\Shared\BarStyling.lua
+Modules\Shared\DataTokens\DataTokens.lua
+Modules\Shared\DataTokens\HealthTokens.lua
+Modules\Shared\DataTokens\PowerTokens.lua
+Modules\Shared\DataTokens\IconTokens.lua
+Modules\Shared\DataTokens\StatusTokens.lua
+Modules\Shared\DataTokens\UnitTokens.lua
+Modules\Shared\DataTokens\InfoTokens.lua
+Modules\Shared\DataTokens\FormatTokens.lua
 
 Modules\PersonalResource\PersonalResource.lua
-Modules\PersonalResource\TextTokens\TextTokens.lua
-Modules\PersonalResource\TextTokens\HealthTokens.lua
-Modules\PersonalResource\TextTokens\PowerTokens.lua
-Modules\PersonalResource\TextTokens\IconTokens.lua
-Modules\PersonalResource\TextTokens\StatusTokens.lua
-Modules\PersonalResource\TextTokens\UnitTokens.lua
-Modules\PersonalResource\TextTokens\InfoTokens.lua
 Modules\PersonalResource\Style.lua
 Modules\PersonalResource\Layout.lua
 
+Modules\TargetResource\TargetResource.lua
+Modules\TargetResource\Style.lua
+Modules\TargetResource\Layout.lua
+
 Options\Options.lua
+Options\Options_Shared.lua
 Options\Options_PersonalResource.lua
+Options\Options_TargetResource.lua
 Options\Options_Texts.lua
+Options\Options_PowerColors.lua
 
 

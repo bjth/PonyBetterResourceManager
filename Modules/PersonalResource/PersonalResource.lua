@@ -46,6 +46,25 @@ local function EnsureHooks()
 			hooksecurefunc(PersonalResourceDisplayMixin, "SetupPowerBar", function(frame)
 				if IsModuleEnabled() then
 					Style:ApplyPowerBarStyle(frame, GetDB());
+					-- Also apply power color immediately after setup
+					local PowerColor = ns.PowerColor;
+					local db = GetDB();
+					if PowerColor and db and frame.PowerBar then
+						PowerColor:ApplyPowerColor(frame.PowerBar, "player", db, false);
+					end
+				end
+			end);
+		end
+		
+		-- Also hook UpdatePower to ensure color is applied when power changes
+		if Style and Style.ApplyPowerBarStyle then
+			hooksecurefunc(PersonalResourceDisplayMixin, "UpdatePower", function(frame)
+				if IsModuleEnabled() then
+					local PowerColor = ns.PowerColor;
+					local db = GetDB();
+					if PowerColor and db and frame.PowerBar then
+						PowerColor:ApplyPowerColor(frame.PowerBar, "player", db, false);
+					end
 				end
 			end);
 		end
@@ -124,6 +143,9 @@ function PersonalResource:InitializeFrame()
 	self.frame = frame;
 	EnsureHooks();
 
+	-- Make frame clickable to target player and hoverable for spell casting
+	self:SetupFrameInteraction(frame);
+
 	-- Do not call Blizzard's setup methods directly (they may touch secret values),
 	-- but do apply our styling/layout once so that reload/login immediately reflects
 	-- current settings even if Setup* already ran before our hooks were installed.
@@ -131,11 +153,52 @@ function PersonalResource:InitializeFrame()
 	if Style and Style.ApplyAll then
 		Style:ApplyAll(frame, GetDB());
 	end
-
-	local Layout = ns.PersonalResourceLayout;
-	if Layout and Layout.ApplyLayout then
-		Layout:ApplyLayout(frame, GetDB());
+	
+	-- Ensure power color is applied on initial load
+	-- This fixes the issue where power color doesn't show until an event fires
+	local PowerColor = ns.PowerColor;
+	local db = GetDB();
+	if PowerColor and db and frame.PowerBar then
+		-- Use a small delay to ensure power type is determined
+		C_Timer.After(0.1, function()
+			if frame and frame.PowerBar then
+				PowerColor:ApplyPowerColor(frame.PowerBar, "player", db, false);
+			end
+		end);
 	end
+end
+
+function PersonalResource:SetupFrameInteraction(frame)
+	if not frame then
+		return;
+	end
+	
+	-- Check if we've already set this up
+	if frame._PBRSecureButton then
+		return;
+	end
+	
+	-- Use secure unit button template for clicking and spell casting
+	-- This allows clicking to target player and hovering to cast spells on player
+	-- Use "togglemenu" instead of "menu" - togglemenu is a secure action that automatically
+	-- determines the correct menu type based on the unit, and calls UnitPopup_OpenMenu
+	-- from secure code, allowing menu items to call protected functions
+	local secureButton = CreateFrame("Button", nil, frame, "SecureUnitButtonTemplate");
+	secureButton:SetAllPoints(frame);
+	secureButton:SetAttribute("unit", "player");
+	secureButton:SetAttribute("*type1", "target");      -- Left click targets player
+	secureButton:SetAttribute("*type2", "togglemenu");  -- Right click opens menu (secure action)
+	secureButton:RegisterForClicks("AnyUp");
+	secureButton:RegisterForDrag("LeftButton", "RightButton");
+	
+	-- Enable mouse on secure button for hover/click
+	secureButton:EnableMouse(true);
+	
+	-- Make sure the frame itself allows mouse passthrough to the secure button
+	frame:EnableMouse(false);  -- Disable on main frame, let secure button handle it
+	
+	-- Store reference
+	frame._PBRSecureButton = secureButton;
 end
 
 function PersonalResource:ADDON_LOADED(_, name)
@@ -156,7 +219,6 @@ function PersonalResource:RefreshFromConfig()
 	end
 
 	local Style = ns.PersonalResourceStyle;
-	local Layout = ns.PersonalResourceLayout;
 
 	if Style and Style.ApplyAll then
 		Style:ApplyAll(frame, GetDB());
@@ -170,10 +232,6 @@ function PersonalResource:RefreshFromConfig()
 		if Style and Style.ApplyAlternatePowerStyle then
 			Style:ApplyAlternatePowerStyle(frame, GetDB());
 		end
-	end
-
-	if Layout and Layout.ApplyLayout then
-		Layout:ApplyLayout(frame, GetDB());
 	end
 end
 
@@ -259,10 +317,7 @@ end
 
 function PersonalResource:OnEditModeExit(systemFrame)
 	-- The system frame here is the same PersonalResourceDisplayFrame instance.
-	local Layout = ns.PersonalResourceLayout;
-	if Layout and Layout.OnEditModeExit then
-		Layout:OnEditModeExit(systemFrame, GetDB());
-	end
+	-- Scale is now handled entirely by Blizzard's Edit Mode UI
 end
 
 

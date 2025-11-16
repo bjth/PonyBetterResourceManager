@@ -1,12 +1,12 @@
 local ADDON_NAME, ns = ...;
 
-local TextTokens = ns.PersonalResourceTextTokens;
-if not TextTokens then
+local DataTokens = ns.DataTokens;
+if not DataTokens then
 	return;
 end
 
 -- Register {zone} token - shows current zone name
-TextTokens:RegisterToken("zone", function(token, tokenLower, modifiers, context)
+DataTokens:RegisterToken("zone", function(token, tokenLower, modifiers, context)
 	local zoneName = GetZoneText();
 	if zoneName and zoneName ~= "" then
 		return zoneName;
@@ -15,7 +15,7 @@ TextTokens:RegisterToken("zone", function(token, tokenLower, modifiers, context)
 end);
 
 -- Register {fps} token - shows current FPS
-TextTokens:RegisterToken("fps", function(token, tokenLower, modifiers, context)
+DataTokens:RegisterToken("fps", function(token, tokenLower, modifiers, context)
 	local fps = GetFramerate();
 	if fps then
 		-- Round to nearest integer
@@ -36,7 +36,7 @@ end);
 -- {latency:1f} or {latency:local:1f} - home latency with 1 decimal place (e.g., "45.2ms")
 -- {latency:world:1f} - world latency with 1 decimal place
 -- {latency:2f} - home latency with 2 decimal places
-TextTokens:RegisterToken("latency", function(token, tokenLower, modifiers, context)
+DataTokens:RegisterToken("latency", function(token, tokenLower, modifiers, context)
 	local _, latencyHome, latencyWorld = GetNetStats();
 	
 	-- Determine which latency to use and format specifier
@@ -96,7 +96,7 @@ end);
 -- Register {time} token - shows current game time
 -- {time} - 24-hour format (HH:MM)
 -- {time:12} - 12-hour format (HH:MM AM/PM)
-TextTokens:RegisterToken("time", function(token, tokenLower, modifiers, context)
+DataTokens:RegisterToken("time", function(token, tokenLower, modifiers, context)
 	local hour, minute = GetGameTime();
 	if hour and minute then
 		-- Check for :12 modifier for 12-hour format

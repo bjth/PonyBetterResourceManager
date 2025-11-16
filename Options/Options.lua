@@ -22,7 +22,9 @@ function Options:Initialize()
 	end
 
 	local personalGroup = ns.PersonalResourceOptions and ns.PersonalResourceOptions:BuildOptions() or nil;
+	local targetGroup = ns.TargetResourceOptions and ns.TargetResourceOptions:BuildOptions() or nil;
 	local textGroupBuilder = ns.PersonalResourceTextOptions and ns.PersonalResourceTextOptions:BuildOptions() or nil;
+	local powerColorGroup = ns.PowerColorOptions and ns.PowerColorOptions:BuildOptions() or nil;
 
 	-- Build options table as a function so it rebuilds dynamically when text entries change
 	local function BuildOptionsTable()
@@ -42,13 +44,29 @@ function Options:Initialize()
 					get = personalGroup.get,
 					set = personalGroup.set,
 				} or nil,
+				targetResource = targetGroup and {
+					type = "group",
+					name = "Target Resource",
+					order = 2,
+					args = targetGroup.args,
+					get = targetGroup.get,
+					set = targetGroup.set,
+				} or nil,
 				texts = textGroup and {
 					type = "group",
-					name = "Texts",
-					order = 2,
+					name = "Data Texts",
+					order = 3,
 					args = textGroup.args,
 					get = textGroup.get,
 					set = textGroup.set,
+				} or nil,
+				powerColors = powerColorGroup and {
+					type = "group",
+					name = "Power Colors",
+					order = 4,
+					args = powerColorGroup.args,
+					get = powerColorGroup.get,
+					set = powerColorGroup.set,
 				} or nil,
 			},
 		};

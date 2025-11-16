@@ -6,6 +6,29 @@ local LSM = ns.Media and ns.Media.LSM;
 local TextOptions = {};
 ns.PersonalResourceTextOptions = TextOptions;
 
+-- Migration: Ensure all existing texts have resourceType set to PERSONAL
+function TextOptions:MigrateTexts()
+	local db = addon.db and addon.db.profile and addon.db.profile.personalResource;
+	if not db or not db.texts then
+		return;
+	end
+	
+	local migrated = false;
+	for _, entry in ipairs(db.texts) do
+		if not entry.resourceType then
+			entry.resourceType = "PERSONAL";
+			migrated = true;
+		end
+	end
+	
+	if migrated then
+		-- Notify that we've migrated
+		if addon.NotifyConfigChanged then
+			addon:NotifyConfigChanged();
+		end
+	end
+end
+
 local function GetFontList()
 	local fonts = {
 		FRIZQT = "Friz Quadrata",
@@ -32,7 +55,8 @@ end
 
 local function ParseTextIndex(info)
 	-- info can look like:
-	-- { "texts", "text1", "enabled" } - direct field
+	-- { "texts", "personal", "text1", "enabled" } - nested in resource group
+	-- { "texts", "text1", "enabled" } - direct field (legacy)
 	-- { "texts", "text1", "basicGroup", "delete" } - nested in a group
 	-- We need to find the "textN" key in the path
 	for i = #info, 1, -1 do
@@ -45,6 +69,20 @@ local function ParseTextIndex(info)
 		end
 	end
 	return nil;
+end
+
+local function GetResourceTypeFromInfo(info)
+	-- Check if we're in a personal or target sub-group
+	for i = 1, #info do
+		local key = info[i];
+		if key == "personal" then
+			return "PERSONAL";
+		elseif key == "target" then
+			return "TARGET";
+		end
+	end
+	-- Default to PERSONAL for backward compatibility
+	return "PERSONAL";
 end
 
 local function Get(info)
@@ -64,6 +102,11 @@ local function Get(info)
 		-- For all fields, entry must exist
 		if not entry then
 			return;
+		end
+		
+		-- Ensure resourceType exists (migration safety)
+		if not entry.resourceType then
+			entry.resourceType = "PERSONAL";
 		end
 		
 		if key == "font" then
@@ -141,6 +184,11 @@ local function Set(info, ...)
 		db.texts = db.texts or {};
 		db.texts[index] = db.texts[index] or {};
 		local entry = db.texts[index];
+		
+		-- Ensure resourceType exists
+		if not entry.resourceType then
+			entry.resourceType = "PERSONAL";
+		end
 
 		if key == "font" then
 			local fontKey = ...;
@@ -181,8 +229,8 @@ local function Set(info, ...)
 			entry[key] = value;
 		end
 		
-		-- If name, enabled, target, or format changed, notify AceConfig to refresh the tree/list
-		if key == "name" or key == "enabled" or key == "target" or key == "format" then
+		-- If name, enabled, target, format, or resourceType changed, notify AceConfig to refresh the tree/list
+		if key == "name" or key == "enabled" or key == "target" or key == "format" or key == "resourceType" then
 			-- Force a refresh of the options table to update the tree view
 			local AceConfig = LibStub("AceConfigRegistry-3.0", true);
 			if AceConfig then
@@ -218,7 +266,8 @@ local function Set(info, ...)
 	end
 end
 
-local function BuildTextEntryArgs()
+-- Build text entry args filtered by resourceType
+local function BuildTextEntryArgs(resourceType)
 	local db = GetDB();
 	local args = {};
 
@@ -227,10 +276,17 @@ local function BuildTextEntryArgs()
 	end
 
 	for index, entry in ipairs(db.texts) do
-		local key = "text" .. index;
-		-- Capture index in a local variable to avoid closure issues
-		local entryIndex = index;
-		args[key] = {
+		-- Ensure resourceType exists
+		if not entry.resourceType then
+			entry.resourceType = "PERSONAL";
+		end
+		
+		-- Only include entries matching the requested resourceType
+		if entry.resourceType == resourceType then
+			local key = "text" .. index;
+			-- Capture index in a local variable to avoid closure issues
+			local entryIndex = index;
+			args[key] = {
 			type = "group",
 			inline = false,
 			name = function()
@@ -279,12 +335,54 @@ local function BuildTextEntryArgs()
 							},
 							order = 3,
 						},
+						moveToOther = {
+							type = "execute",
+							name = function()
+								local dbLocal = GetDB();
+								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[entryIndex];
+								if entryLocal and entryLocal.resourceType == "TARGET" then
+									return "Move to Personal";
+								else
+									return "Move to Target";
+								end
+							end,
+							desc = "Move this text entry to the other resource group.",
+							order = 4,
+							func = function(info)
+								local moveIndex = ParseTextIndex(info);
+								if not moveIndex then
+									return;
+								end
+								local dbLocal = GetDB();
+								if not dbLocal or type(dbLocal.texts) ~= "table" then
+									return;
+								end
+								local entryLocal = dbLocal.texts[moveIndex];
+								if not entryLocal then
+									return;
+								end
+								-- Toggle resourceType
+								if entryLocal.resourceType == "TARGET" then
+									entryLocal.resourceType = "PERSONAL";
+								else
+									entryLocal.resourceType = "TARGET";
+								end
+								-- Notify AceConfig that the options table has changed.
+								local AceConfig = LibStub("AceConfigRegistry-3.0", true);
+								if AceConfig then
+									AceConfig:NotifyChange("PonyBetterResourceManager");
+								end
+								if addon.NotifyConfigChanged then
+									addon:NotifyConfigChanged();
+								end
+							end,
+						},
 						delete = {
 							type = "execute",
 							name = "Delete",
 							confirm = true,
 							confirmText = "Delete this text entry?",
-							order = 4,
+							order = 5,
 							func = function(info)
 								-- Extract the index from the info path
 								local deleteIndex = ParseTextIndex(info);
@@ -439,7 +537,7 @@ local function BuildTextEntryArgs()
 							order = 7,
 							disabled = function()
 								local dbLocal = GetDB();
-								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[index];
+								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[entryIndex];
 								return not (entryLocal and entryLocal.shadowEnabled ~= false);
 							end,
 						},
@@ -453,7 +551,7 @@ local function BuildTextEntryArgs()
 							order = 8,
 							disabled = function()
 								local dbLocal = GetDB();
-								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[index];
+								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[entryIndex];
 								return not (entryLocal and entryLocal.shadowEnabled ~= false);
 							end,
 						},
@@ -465,7 +563,7 @@ local function BuildTextEntryArgs()
 							order = 9,
 							disabled = function()
 								local dbLocal = GetDB();
-								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[index];
+								local entryLocal = dbLocal and dbLocal.texts and dbLocal.texts[entryIndex];
 								return not (entryLocal and entryLocal.shadowEnabled ~= false);
 							end,
 						},
@@ -473,6 +571,7 @@ local function BuildTextEntryArgs()
 				},
 			},
 		};
+		end
 	end
 
 	return args;
@@ -483,27 +582,16 @@ function TextOptions:BuildOptions()
 	-- This ensures the UI refreshes when entries are added or deleted.
 	return function()
 		local args = {
-			header = {
-				type = "header",
-				name = "Personal Resource Texts",
-				order = 1,
-			},
-			healthTextEnabled = {
-				type = "toggle",
-				name = "Enable Texts",
-				desc = "Master toggle for all custom texts on the personal resource.",
-				order = 2,
-			},
 			defaultsHeader = {
 				type = "header",
 				name = "Global Defaults",
-				order = 5,
+				order = 1,
 			},
 			textDefaultFont = {
 				type = "select",
 				name = "Default Font",
 				desc = "Font used when a text does not specify its own.",
-				order = 6,
+				order = 2,
 				values = GetFontList,
 			},
 			textDefaultSize = {
@@ -512,63 +600,156 @@ function TextOptions:BuildOptions()
 				min = 6,
 				max = 72,
 				step = 1,
-				order = 7,
+				order = 3,
 			},
 			textDefaultColor = {
 				type = "color",
 				name = "Default Color",
 				hasAlpha = true,
-				order = 8,
+				order = 4,
 			},
-			listHeader = {
+			personalHeader = {
 				type = "header",
-				name = "Text Entries",
+				name = "Personal Resource",
 				order = 10,
 			},
-			addText = {
-				type = "execute",
-				name = "Add Text",
-				order = 11,
-				func = function()
+			personalEnabled = {
+				type = "toggle",
+				name = "Enable Personal Texts",
+				desc = "Master toggle for all custom texts on the personal resource.",
+				get = function()
 					local db = GetDB();
-					if not db then
-						return;
-					end
-					db.texts = db.texts or {};
-					table.insert(db.texts, {
-						name = "",
-						enabled = true,
-						target = "HEALTH",
-						anchor = "CENTER",
-						x = 0,
-						y = 0,
-						format = "{hp}",
-					});
-					-- Notify AceConfig that the options table has changed.
-					local AceConfig = LibStub("AceConfigRegistry-3.0", true);
-					if AceConfig then
-						AceConfig:NotifyChange("PonyBetterResourceManager");
-					end
-					if addon.NotifyConfigChanged then
-						addon:NotifyConfigChanged();
+					return db and db.healthTextEnabled ~= false;
+				end,
+				set = function(info, value)
+					local db = GetDB();
+					if db then
+						db.healthTextEnabled = value;
+						if addon.NotifyConfigChanged then
+							addon:NotifyConfigChanged();
+						end
 					end
 				end,
+				order = 11,
+			},
+			personal = {
+				type = "group",
+				inline = false,
+				name = "Personal",
+				order = 12,
+				args = {},
+			},
+			targetHeader = {
+				type = "header",
+				name = "Target Resource",
+				order = 20,
+			},
+			targetEnabled = {
+				type = "toggle",
+				name = "Enable Target Texts",
+				desc = "Master toggle for all custom texts on the target resource.",
+				get = function()
+					local targetDb = addon.db and addon.db.profile and addon.db.profile.targetResource;
+					return targetDb and targetDb.healthTextEnabled ~= false;
+				end,
+				set = function(info, value)
+					local targetDb = addon.db and addon.db.profile and addon.db.profile.targetResource;
+					if targetDb then
+						targetDb.healthTextEnabled = value;
+						if addon.NotifyConfigChanged then
+							addon:NotifyConfigChanged();
+						end
+					end
+				end,
+				order = 21,
+			},
+			target = {
+				type = "group",
+				inline = false,
+				name = "Target",
+				order = 22,
+				args = {},
 			},
 		};
 
-		-- Inject per-text groups after the static entries.
-		local textArgs = BuildTextEntryArgs();
-		for k, v in pairs(textArgs) do
-			args[k] = v;
+		-- Build Personal text entries
+		local personalArgs = BuildTextEntryArgs("PERSONAL");
+		personalArgs.addText = {
+			type = "execute",
+			name = "Add Text",
+			order = 1,
+			func = function()
+				local db = GetDB();
+				if not db then
+					return;
+				end
+				db.texts = db.texts or {};
+				table.insert(db.texts, {
+					name = "",
+					enabled = true,
+					resourceType = "PERSONAL",
+					target = "HEALTH",
+					anchor = "CENTER",
+					x = 0,
+					y = 0,
+					format = "{hp}",
+				});
+				-- Notify AceConfig that the options table has changed.
+				local AceConfig = LibStub("AceConfigRegistry-3.0", true);
+				if AceConfig then
+					AceConfig:NotifyChange("PonyBetterResourceManager");
+				end
+				if addon.NotifyConfigChanged then
+					addon:NotifyConfigChanged();
+				end
+			end,
+		};
+		for k, v in pairs(personalArgs) do
+			args.personal.args[k] = v;
+		end
+
+		-- Build Target text entries
+		local targetArgs = BuildTextEntryArgs("TARGET");
+		targetArgs.addText = {
+			type = "execute",
+			name = "Add Text",
+			order = 1,
+			func = function()
+				local db = GetDB();
+				if not db then
+					return;
+				end
+				db.texts = db.texts or {};
+				table.insert(db.texts, {
+					name = "",
+					enabled = true,
+					resourceType = "TARGET",
+					target = "HEALTH",
+					anchor = "CENTER",
+					x = 0,
+					y = 0,
+					format = "{hp}",
+				});
+				-- Notify AceConfig that the options table has changed.
+				local AceConfig = LibStub("AceConfigRegistry-3.0", true);
+				if AceConfig then
+					AceConfig:NotifyChange("PonyBetterResourceManager");
+				end
+				if addon.NotifyConfigChanged then
+					addon:NotifyConfigChanged();
+				end
+			end,
+		};
+		for k, v in pairs(targetArgs) do
+			args.target.args[k] = v;
 		end
 
 		return {
 			type = "group",
-			name = "Texts",
+			name = "Data Texts",
 			get = Get,
 			set = Set,
 			args = args,
 		};
 	end;
 end
-

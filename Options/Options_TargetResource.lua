@@ -2,12 +2,13 @@ local ADDON_NAME, ns = ...;
 
 local addon = ns.Addon;
 local LSM = ns.Media and ns.Media.LSM;
+local SharedOptions = ns.SharedResourceOptions;
 
-local PersonalOptions = {};
-ns.PersonalResourceOptions = PersonalOptions;
+local TargetOptions = {};
+ns.TargetResourceOptions = TargetOptions;
 
 local function GetDB()
-	return addon.db and addon.db.profile and addon.db.profile.personalResource;
+	return addon.db and addon.db.profile and addon.db.profile.targetResource;
 end
 
 local function Get(info)
@@ -54,13 +55,19 @@ local function BuildStatusBarValues()
 	return values;
 end
 
-function PersonalOptions:BuildOptions()
+function TargetOptions:BuildOptions()
 	return {
 		type = "group",
-		name = "Personal Resource",
+		name = "Target Resource",
 		get = Get,
 		set = Set,
 		args = {
+			enabled = {
+				type = "toggle",
+				name = "Enable Target Resource Display",
+				desc = "Show a resource display for your target (similar to the personal resource display).",
+				order = 1,
+			},
 			divider1 = {
 				type = "header",
 				name = "Health Bar",
@@ -69,7 +76,7 @@ function PersonalOptions:BuildOptions()
 			showHealthBar = {
 				type = "toggle",
 				name = "Show Health Bar",
-				desc = "If disabled, hides the health bar even when Blizzard would normally show it.",
+				desc = "If disabled, hides the health bar.",
 				order = 11,
 			},
 			healthSizeGroup = {
@@ -77,8 +84,6 @@ function PersonalOptions:BuildOptions()
 				inline = true,
 				name = "",
 				order = 12,
-				get = Get,
-				set = Set,
 				args = {
 					healthWidth = {
 						type = "range",
@@ -87,8 +92,6 @@ function PersonalOptions:BuildOptions()
 						min = 0,
 						max = 1000,
 						step = 1,
-						get = Get,
-						set = Set,
 						order = 1,
 					},
 					healthHeight = {
@@ -98,46 +101,41 @@ function PersonalOptions:BuildOptions()
 						min = 0,
 						max = 200,
 						step = 1,
-						get = Get,
-						set = Set,
 						order = 2,
 					},
 				},
 			},
-			healthBorderGroup = {
+			healthOffsetGroup = {
 				type = "group",
 				inline = true,
 				name = "",
 				order = 13,
 				args = {
-					healthBorderStyle = {
-						type = "select",
-						name = "Border Style",
-						desc = "Style for the health bar border.",
-						values = {
-							Default = "Default",
-							None = "None",
-						},
-						order = 0,
-					},
-					healthBorderSize = {
+					healthOffsetX = {
 						type = "range",
-						name = "Border Size",
-						desc = "Scale of the health bar border.",
-						min = 0.5,
-						max = 3.0,
-						step = 0.05,
-						order = 0.5,
-					},
-					healthBorderColor = {
-						type = "color",
-						name = "Border Color",
-						desc = "Color of the health bar border.",
-						hasAlpha = true,
+						name = "Health X Offset",
+						desc = "Horizontal offset for the health bar.",
+						min = -500,
+						max = 500,
+						step = 1,
 						order = 1,
+					},
+					healthOffsetY = {
+						type = "range",
+						name = "Health Y Offset",
+						desc = "Vertical offset for the health bar.",
+						min = -500,
+						max = 500,
+						step = 1,
+						order = 2,
 					},
 				},
 			},
+			healthBorderGroup = SharedOptions and SharedOptions:BuildHealthBorderGroup(
+				function(info) return GetDB(); end,
+				function(info, ...) Set(info, ...); end,
+				13.5
+			) or nil,
 			healthTextureGroup = {
 				type = "group",
 				inline = true,
@@ -154,7 +152,7 @@ function PersonalOptions:BuildOptions()
 					overrideHealthColor = {
 						type = "toggle",
 						name = "Override Health Color",
-						desc = "Use a custom health bar color instead of Blizzard defaults.",
+						desc = "Use a custom health bar color instead of default green.",
 						order = 2,
 					},
 					healthColor = {
@@ -168,37 +166,11 @@ function PersonalOptions:BuildOptions()
 							return not (db and db.overrideHealthColor);
 						end,
 					},
-					healthClassColorButton = {
-						type = "execute",
-						name = "Set to Class Color",
-						desc = "Set the health bar color to your class color and enable override.",
-						order = 4,
-						func = function()
-							local db = GetDB();
-							if not db then
-								return;
-							end
-
-							local _, class = UnitClass("player");
-							local colorTable = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class];
-							if colorTable then
-								db.overrideHealthColor = true;
-								db.healthColor.r = colorTable.r;
-								db.healthColor.g = colorTable.g;
-								db.healthColor.b = colorTable.b;
-								db.healthColor.a = 1.0;
-
-								if addon.NotifyConfigChanged then
-									addon:NotifyConfigChanged();
-								end
-							end
-						end,
-					},
 					healthBackgroundEnabled = {
 						type = "toggle",
 						name = "Background Enable",
 						desc = "Show background behind health bar.",
-						order = 5,
+						order = 4,
 						get = function()
 							local db = GetDB();
 							return db and db.healthBarBackground and db.healthBarBackground.enabled;
@@ -218,7 +190,7 @@ function PersonalOptions:BuildOptions()
 						name = "Background Texture",
 						desc = "Background texture for health bar.",
 						values = BuildStatusBarValues,
-						order = 6,
+						order = 5,
 						get = function()
 							local db = GetDB();
 							return db and db.healthBarBackground and db.healthBarBackground.texture or "";
@@ -242,7 +214,7 @@ function PersonalOptions:BuildOptions()
 						name = "Background Color",
 						desc = "Background color for health bar.",
 						hasAlpha = true,
-						order = 7,
+						order = 6,
 						get = function()
 							local db = GetDB();
 							if db and db.healthBarBackground and db.healthBarBackground.color then
@@ -278,7 +250,7 @@ function PersonalOptions:BuildOptions()
 			showPowerBar = {
 				type = "toggle",
 				name = "Show Power Bar",
-				desc = "If disabled, hides the power bar even when Blizzard would normally show it.",
+				desc = "If disabled, hides the power bar.",
 				order = 21,
 			},
 			powerSizeGroup = {
@@ -286,8 +258,6 @@ function PersonalOptions:BuildOptions()
 				inline = true,
 				name = "",
 				order = 22,
-				get = Get,
-				set = Set,
 				args = {
 					powerWidth = {
 						type = "range",
@@ -296,8 +266,6 @@ function PersonalOptions:BuildOptions()
 						min = 0,
 						max = 1000,
 						step = 1,
-						get = Get,
-						set = Set,
 						order = 1,
 					},
 					powerHeight = {
@@ -307,8 +275,6 @@ function PersonalOptions:BuildOptions()
 						min = 0,
 						max = 200,
 						step = 1,
-						get = Get,
-						set = Set,
 						order = 2,
 					},
 				},
@@ -339,45 +305,16 @@ function PersonalOptions:BuildOptions()
 					},
 				},
 			},
-			powerBorderGroup = {
-				type = "group",
-				inline = true,
-				name = "",
-				order = 24,
-				args = {
-					powerBorderStyle = {
-						type = "select",
-						name = "Border Style",
-						desc = "Style for the power bar border.",
-						values = {
-							Default = "Default",
-							None = "None",
-						},
-						order = 0,
-					},
-					powerBorderSize = {
-						type = "range",
-						name = "Border Size",
-						desc = "Scale of the power bar border.",
-						min = 0.5,
-						max = 3.0,
-						step = 0.05,
-						order = 0.5,
-					},
-					powerBorderColor = {
-						type = "color",
-						name = "Border Color",
-						desc = "Color of the power bar border.",
-						hasAlpha = true,
-						order = 1,
-					},
-				},
-			},
+			powerBorderGroup = SharedOptions and SharedOptions:BuildPowerBorderGroup(
+				function(info) return GetDB(); end,
+				function(info, ...) Set(info, ...); end,
+				23.5
+			) or nil,
 			powerTextureGroup = {
 				type = "group",
 				inline = true,
 				name = "",
-				order = 25,
+				order = 24,
 				args = {
 					powerTexture = {
 						type = "select",
@@ -562,50 +499,7 @@ function PersonalOptions:BuildOptions()
 				name = "Layout",
 				order = 30,
 			},
-
-			alternateHeader = {
-				type = "header",
-				name = "Alternate Power Bar",
-				order = 40,
-			},
-			showAlternatePowerBar = {
-				type = "toggle",
-				name = "Show Alternate Power Bar",
-				desc = "If disabled, hides the alternate power bar (where applicable).",
-				order = 41,
-			},
-
-			classHeader = {
-				type = "header",
-				name = "Class Resource Bar",
-				order = 50,
-			},
-			showClassResourceBar = {
-				type = "toggle",
-				name = "Show Class Resource Bar",
-				desc = "If disabled, hides the class resource bar (e.g. Holy Power, combo points).",
-				order = 51,
-			},
-			classOffsetX = {
-				type = "range",
-				name = "Class Resource X Offset",
-				desc = "Horizontal offset for the class resource bar container.",
-				min = -500,
-				max = 500,
-				step = 1,
-				order = 52,
-			},
-			classOffsetY = {
-				type = "range",
-				name = "Class Resource Y Offset",
-				desc = "Vertical offset for the class resource bar container.",
-				min = -500,
-				max = 500,
-				step = 1,
-				order = 53,
-			},
 		},
 	};
 end
-
 
