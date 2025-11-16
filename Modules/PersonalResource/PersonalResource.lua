@@ -94,6 +94,9 @@ function PersonalResource:OnEnable()
 	-- Register for UNIT_POWER events to ensure text updates when power changes
 	self:RegisterEvent("UNIT_POWER_UPDATE", "UNIT_POWER_UPDATE");
 	self:RegisterEvent("UNIT_MAXPOWER", "UNIT_MAXPOWER");
+	-- Register for target and raid target changes to update {mark} token
+	self:RegisterEvent("PLAYER_TARGET_CHANGED", "PLAYER_TARGET_CHANGED");
+	self:RegisterEvent("RAID_TARGET_UPDATE", "RAID_TARGET_UPDATE");
 end
 
 function PersonalResource:OnDisable()
@@ -106,6 +109,9 @@ function PersonalResource:OnDisable()
 	self:UnregisterEvent("UNIT_MAXHEALTH");
 	self:UnregisterEvent("UNIT_POWER_UPDATE");
 	self:UnregisterEvent("UNIT_MAXPOWER");
+	-- Unregister target and raid target events
+	self:UnregisterEvent("PLAYER_TARGET_CHANGED");
+	self:UnregisterEvent("RAID_TARGET_UPDATE");
 end
 
 function PersonalResource:InitializeFrame()
@@ -213,6 +219,38 @@ function PersonalResource:UNIT_MAXPOWER(event, unit, powerType)
 		if frame and frame.PowerBar then
 			local Style = ns.PersonalResourceStyle;
 			if Style and Style.UpdatePowerText then
+				Style:UpdatePowerText(frame, GetDB());
+			end
+		end
+	end
+end
+
+function PersonalResource:PLAYER_TARGET_CHANGED(event)
+	-- Update all text displays when target changes (for {mark} token)
+	local frame = _G.PersonalResourceDisplayFrame;
+	if frame then
+		local Style = ns.PersonalResourceStyle;
+		if Style then
+			if Style.UpdateHealthText then
+				Style:UpdateHealthText(frame, GetDB());
+			end
+			if Style.UpdatePowerText then
+				Style:UpdatePowerText(frame, GetDB());
+			end
+		end
+	end
+end
+
+function PersonalResource:RAID_TARGET_UPDATE(event)
+	-- Update all text displays when raid target markers change (for {mark} token)
+	local frame = _G.PersonalResourceDisplayFrame;
+	if frame then
+		local Style = ns.PersonalResourceStyle;
+		if Style then
+			if Style.UpdateHealthText then
+				Style:UpdateHealthText(frame, GetDB());
+			end
+			if Style.UpdatePowerText then
 				Style:UpdatePowerText(frame, GetDB());
 			end
 		end

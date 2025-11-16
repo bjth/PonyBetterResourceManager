@@ -9,6 +9,9 @@ ns.PersonalResourceStyle = Style;
 local BreakUpLargeNumbers = BreakUpLargeNumbers;
 local AbbreviateLargeNumbers = AbbreviateLargeNumbers or BreakUpLargeNumbers;
 
+-- Get the TextTokens system
+local TextTokens = ns.PersonalResourceTextTokens;
+
 local function GetStatusBarTexture(key)
 	if not LSM then
 		return nil;
@@ -263,176 +266,23 @@ local function FormatHealthCustom(template, hp, maxHp)
 		end
 	end
 
-	-- Manually parse and replace tokens - can't use gsub or table.concat with secret values
-	-- Use string concatenation (..) which works with secret values
-	local result = "";
-	local pos = 1;
-	
-	while pos <= #template do
-		local startPos = string.find(template, "{", pos);
-		if not startPos then
-			-- No more tokens, add rest of string
-			result = result .. string.sub(template, pos);
-			break;
-		end
-		
-		-- Add text before token
-		if startPos > pos then
-			result = result .. string.sub(template, pos, startPos - 1);
-		end
-		
-		-- Find end of token
-		local endPos = string.find(template, "}", startPos);
-		if not endPos then
-			-- No closing brace, add rest and break
-			result = result .. string.sub(template, startPos);
-			break;
-		end
-		
-		-- Extract token
-		local token = string.sub(template, startPos + 1, endPos - 1);
-		local tokenLower = string.lower(token);
-		
-		-- Handle token - use string concatenation (..) which works with secret values
-		if tokenLower == "hp" then
-			-- {hp} shows full number (not abbreviated)
-			result = result .. hpFull;
-		elseif tokenLower == "hpmax" or tokenLower == "maxhp" then
-			-- {hpmax} shows full number (not abbreviated)
-			result = result .. maxFull;
-		elseif tokenLower == "hp%" then
-			if pctFormatted then
-				result = result .. pctFormatted .. "%";
-			end
-		elseif string.match(tokenLower, "^hp:") then
-			-- Token with modifiers
-			local baseToken = string.match(tokenLower, "^([^:]+)");
-			local modifiers = string.sub(token, #baseToken + 2); -- Use original token (not lowercased) for format specifiers
-			local modifiersLower = string.lower(modifiers);
-			
-			if baseToken == "hp" then
-				local parts = {};
-				local partsOriginal = {}; -- Keep original case for format specifiers
-				for part in string.gmatch(modifiers, "([^%-]+)") do
-					table.insert(partsOriginal, part);
-					table.insert(parts, string.lower(part));
-				end
-				
-				local hasShort = false;
-				local hasPercent = false;
-				local formatSpec = nil;
-				local useBLN = false; -- Use BreakUpLargeNumbers
-				
-				for i, part in ipairs(parts) do
-					if part == "short" then
-						hasShort = true;
-					elseif part == "%" then
-						hasPercent = true;
-					elseif string.match(part, "^%%") then
-						-- Format specifier like "%.0f", "%.1f", etc. - use original case!
-						formatSpec = partsOriginal[i];
-						hasPercent = true; -- Format spec implies percentage
-					elseif part == "bln" then
-						-- Use BreakUpLargeNumbers
-						useBLN = true;
-					end
-				end
-				
-				if hasPercent and pct then
-					-- Format percentage with custom format specifier if provided
-					local pctStr = nil;
-					if formatSpec then
-						-- Try to use the format specifier (e.g., "%.0f" for whole numbers)
-						local ok, formatted = pcall(function()
-							return string.format(formatSpec, pct);
-						end);
-						if ok and formatted then
-							pctStr = formatted;
-						else
-							-- Fallback to default formatting
-							pctStr = pctFormatted;
-						end
-					else
-						-- Use default formatted percentage
-						pctStr = pctFormatted;
-					end
-					
-					if pctStr then
-						pctStr = pctStr .. "%";
-						if hasShort then
-							result = result .. hpShort .. " (" .. pctStr .. ")";
-						else
-							result = result .. pctStr;
-						end
-					end
-				else
-					-- No percentage modifier, show health value
-					if useBLN then
-						-- Use BreakUpLargeNumbers
-						local blnValue = nil;
-						if BreakUpLargeNumbers then
-							blnValue = BreakUpLargeNumbers(hp);
-						end
-						if blnValue then
-							result = result .. blnValue;
-						else
-							result = result .. hpFull;
-						end
-					elseif hasShort then
-						result = result .. hpShort;
-					else
-						result = result .. hpFull;
-					end
-				end
-			end
-		elseif string.match(tokenLower, "^hpmax:") or string.match(tokenLower, "^maxhp:") then
-			-- Check for modifiers
-			local baseToken = string.match(tokenLower, "^([^:]+)");
-			local modifiers = string.sub(token, #baseToken + 2); -- Use original token
-			local modifiersLower = string.lower(modifiers);
-			
-			local hasShort = false;
-			local useBLN = false;
-			
-			-- Parse modifiers
-			local parts = {};
-			local partsOriginal = {};
-			for part in string.gmatch(modifiers, "([^%-]+)") do
-				table.insert(partsOriginal, part);
-				table.insert(parts, string.lower(part));
-			end
-			
-			for i, part in ipairs(parts) do
-				if part == "short" then
-					hasShort = true;
-				elseif part == "bln" then
-					useBLN = true;
-				end
-			end
-			
-			if useBLN then
-				-- Use BreakUpLargeNumbers
-				local blnValue = nil;
-				if BreakUpLargeNumbers then
-					blnValue = BreakUpLargeNumbers(maxHp);
-				end
-				if blnValue then
-					result = result .. blnValue;
-				else
-					result = result .. maxFull;
-				end
-			elseif hasShort then
-				result = result .. maxShort;
-			else
-				result = result .. maxFull;
-			end
-		end
-		-- Unsupported tokens (deficit, missing) get empty replacement (nothing added)
-		
-		pos = endPos + 1;
+	-- Use the modular token system to process the template
+	if TextTokens and TextTokens.ProcessTemplate then
+		local context = {
+			hp = hp,
+			maxHp = maxHp,
+			hpFull = hpFull,
+			hpShort = hpShort,
+			maxFull = maxFull,
+			maxShort = maxShort,
+			pct = pct,
+			pctFormatted = pctFormatted,
+		};
+		return TextTokens:ProcessTemplate(template, context);
+	else
+		-- Fallback: return empty string if token system not available
+		return "";
 	end
-	
-	return result;
 end
 
 local function FormatPowerCustom(template, power, maxPower)
@@ -495,154 +345,23 @@ local function FormatPowerCustom(template, power, maxPower)
 		end
 	end
 
-	-- Manually parse and replace tokens - same approach as health
-	local result = "";
-	local pos = 1;
-	
-	while pos <= #template do
-		local startPos = string.find(template, "{", pos);
-		if not startPos then
-			result = result .. string.sub(template, pos);
-			break;
-		end
-		
-		if startPos > pos then
-			result = result .. string.sub(template, pos, startPos - 1);
-		end
-		
-		local endPos = string.find(template, "}", startPos);
-		if not endPos then
-			result = result .. string.sub(template, startPos);
-			break;
-		end
-		
-		local token = string.sub(template, startPos + 1, endPos - 1);
-		local tokenLower = string.lower(token);
-		
-		-- Handle power tokens
-		if tokenLower == "power" or tokenLower == "mana" then
-			result = result .. powerFull;
-		elseif tokenLower == "powermax" or tokenLower == "manamax" or tokenLower == "maxpower" or tokenLower == "maxmana" then
-			result = result .. maxFull;
-		elseif tokenLower == "power%" or tokenLower == "mana%" then
-			if pctFormatted then
-				result = result .. pctFormatted .. "%";
-			end
-		elseif string.match(tokenLower, "^power:") or string.match(tokenLower, "^mana:") then
-			local baseToken = string.match(tokenLower, "^([^:]+)");
-			local modifiers = string.sub(token, #baseToken + 2);
-			local modifiersLower = string.lower(modifiers);
-			
-			if baseToken == "power" or baseToken == "mana" then
-				local parts = {};
-				local partsOriginal = {};
-				for part in string.gmatch(modifiers, "([^%-]+)") do
-					table.insert(partsOriginal, part);
-					table.insert(parts, string.lower(part));
-				end
-				
-				local hasShort = false;
-				local hasPercent = false;
-				local formatSpec = nil;
-				local useBLN = false;
-				
-				for i, part in ipairs(parts) do
-					if part == "short" then
-						hasShort = true;
-					elseif part == "%" then
-						hasPercent = true;
-					elseif string.match(part, "^%%") then
-						formatSpec = partsOriginal[i];
-						hasPercent = true;
-					elseif part == "bln" then
-						useBLN = true;
-					end
-				end
-				
-				if hasPercent and pct then
-					local pctStr = nil;
-					if formatSpec then
-						local ok, formatted = pcall(function()
-							return string.format(formatSpec, pct);
-						end);
-						if ok and formatted then
-							pctStr = formatted;
-						else
-							pctStr = pctFormatted;
-						end
-					else
-						pctStr = pctFormatted;
-					end
-					
-					if pctStr then
-						pctStr = pctStr .. "%";
-						if hasShort then
-							result = result .. powerShort .. " (" .. pctStr .. ")";
-						else
-							result = result .. pctStr;
-						end
-					end
-				else
-					if useBLN then
-						local blnValue = nil;
-						if BreakUpLargeNumbers then
-							blnValue = BreakUpLargeNumbers(power);
-						end
-						if blnValue then
-							result = result .. blnValue;
-						else
-							result = result .. powerFull;
-						end
-					elseif hasShort then
-						result = result .. powerShort;
-					else
-						result = result .. powerFull;
-					end
-				end
-			end
-		elseif string.match(tokenLower, "^powermax:") or string.match(tokenLower, "^manamax:") or string.match(tokenLower, "^maxpower:") or string.match(tokenLower, "^maxmana:") then
-			local baseToken = string.match(tokenLower, "^([^:]+)");
-			local modifiers = string.sub(token, #baseToken + 2);
-			
-			local hasShort = false;
-			local useBLN = false;
-			
-			local parts = {};
-			local partsOriginal = {};
-			for part in string.gmatch(modifiers, "([^%-]+)") do
-				table.insert(partsOriginal, part);
-				table.insert(parts, string.lower(part));
-			end
-			
-			for i, part in ipairs(parts) do
-				if part == "short" then
-					hasShort = true;
-				elseif part == "bln" then
-					useBLN = true;
-				end
-			end
-			
-			if useBLN then
-				local blnValue = nil;
-				if BreakUpLargeNumbers then
-					blnValue = BreakUpLargeNumbers(maxPower);
-				end
-				if blnValue then
-					result = result .. blnValue;
-				else
-					result = result .. maxFull;
-				end
-			elseif hasShort then
-				result = result .. maxShort;
-			else
-				result = result .. maxFull;
-			end
-		end
-		
-		pos = endPos + 1;
+	-- Use the modular token system to process the template
+	if TextTokens and TextTokens.ProcessTemplate then
+		local context = {
+			power = power,
+			maxPower = maxPower,
+			powerFull = powerFull,
+			powerShort = powerShort,
+			maxFull = maxFull,
+			maxShort = maxShort,
+			pct = pct,
+			pctFormatted = pctFormatted,
+		};
+		return TextTokens:ProcessTemplate(template, context);
+	else
+		-- Fallback: return empty string if token system not available
+		return "";
 	end
-	
-	return result;
 end
 
 local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurrentValue, getMaxValue)
@@ -788,6 +507,17 @@ local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurre
 	
 	-- Clean up font strings that are no longer used (after both UpdateHealthText and UpdatePowerText have run)
 	-- We'll do this cleanup in ApplyAll after both have been called
+end
+
+-- Helper function to check if format string contains dynamic tokens
+local function HasDynamicTokens(formatStr)
+	if not formatStr then
+		return false;
+	end
+	local lower = string.lower(formatStr);
+	return string.find(lower, "{fps}") ~= nil or 
+	       string.find(lower, "{latency}") ~= nil or 
+	       string.find(lower, "{time}") ~= nil;
 end
 
 function Style:UpdateHealthText(frame, db)
@@ -1063,6 +793,110 @@ function Style:ApplyAll(frame, db)
 				fs:SetText("");
 				fs:Hide();
 			end
+		end
+	end
+	
+	-- Set up periodic updates for dynamic tokens (fps, latency, time)
+	self:SetupDynamicTokenUpdates(frame, db);
+end
+
+function Style:SetupDynamicTokenUpdates(frame, db)
+	if not frame or not db then
+		return;
+	end
+	
+	-- Check if any text entries use dynamic tokens
+	local hasDynamicTokens = false;
+	local texts = db.texts;
+	if type(texts) == "table" then
+		for _, entry in ipairs(texts) do
+			if entry and entry.enabled ~= false and entry.format then
+				if HasDynamicTokens(entry.format) then
+					hasDynamicTokens = true;
+					break;
+				end
+			end
+		end
+	end
+	
+	-- Set up separate update frame for dynamic tokens to avoid interfering with Blizzard's OnUpdate
+	if hasDynamicTokens then
+		if not frame._PBRMDynamicUpdateFrame then
+			-- Create a separate frame for our updates
+			local updateFrame = CreateFrame("Frame");
+			frame._PBRMDynamicUpdateFrame = updateFrame;
+			updateFrame._PBRMLastUpdate = 0;
+			updateFrame._PBRMTargetFrame = frame;
+			
+			updateFrame:SetScript("OnUpdate", function(self, elapsed)
+				-- Update every 0.5 seconds for dynamic tokens
+				self._PBRMLastUpdate = (self._PBRMLastUpdate or 0) + elapsed;
+				if self._PBRMLastUpdate >= 0.5 then
+					self._PBRMLastUpdate = 0;
+					
+					local targetFrame = self._PBRMTargetFrame;
+					if not targetFrame then
+						return;
+					end
+					
+					-- Only update text strings directly, don't trigger full updates
+					-- This avoids triggering Blizzard's update methods that do arithmetic on secret values
+					local addon = ns.Addon;
+					local dbLocal = addon and addon.db and addon.db.profile and addon.db.profile.personalResource;
+					if dbLocal and dbLocal.healthTextEnabled ~= false and targetFrame._PBRMTexts then
+						local texts = dbLocal.texts;
+						if type(texts) == "table" then
+							for index, entry in ipairs(texts) do
+								if entry and entry.enabled ~= false and entry.format and HasDynamicTokens(entry.format) then
+									local entryTarget = entry.target;
+									if entryTarget == nil then
+										entryTarget = "HEALTH"; -- Default to health for backward compatibility
+									end
+									
+									-- Find the font string for this entry
+									local fsKey = index .. "_" .. entryTarget;
+									local fs = targetFrame._PBRMTexts[fsKey];
+									if fs and fs:IsShown() then
+										-- Get the appropriate bar and format function
+										local bar = nil;
+										local formatFunc = nil;
+										local getCurrentValue = nil;
+										local getMaxValue = nil;
+										
+										if entryTarget == "HEALTH" then
+											bar = targetFrame.healthbar;
+											formatFunc = FormatHealthCustom;
+											getCurrentValue = function() return UnitHealth("player"); end;
+											getMaxValue = function() return UnitHealthMax("player"); end;
+										elseif entryTarget == "POWER" then
+											bar = targetFrame.PowerBar;
+											formatFunc = FormatPowerCustom;
+											getCurrentValue = function() return UnitPower("player"); end;
+											getMaxValue = function() return UnitPowerMax("player"); end;
+										end
+										
+										if bar and formatFunc and getCurrentValue and getMaxValue then
+											-- Only update the text, don't trigger full refresh
+											local current = getCurrentValue();
+											local max = getMaxValue();
+											local formatString = entry.format or "";
+											local text = formatFunc(formatString, current, max);
+											local textStr = tostring(text or "");
+											fs:SetText(textStr);
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end);
+		end
+	else
+		-- Clean up update frame if no dynamic tokens
+		if frame._PBRMDynamicUpdateFrame then
+			frame._PBRMDynamicUpdateFrame:SetScript("OnUpdate", nil);
+			frame._PBRMDynamicUpdateFrame = nil;
 		end
 	end
 end

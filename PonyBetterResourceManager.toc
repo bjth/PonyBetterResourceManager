@@ -2,7 +2,7 @@
 ## Title: Pony Better Resource Manager
 ## Notes: Modular styling for the Blizzard personal resource display (Midnight compatible).
 ## Author: PonyBetter
-## Version: 0.1.0
+## Version: 0.1.1
 ## SavedVariables: PonyBetterResourceManagerDB
 ## OptionalDeps: Ace3, LibSharedMedia-3.0
 ## X-Category: UnitFrames
@@ -25,6 +25,13 @@ Core\Media.lua
 Core\EditMode.lua
 
 Modules\PersonalResource\PersonalResource.lua
+Modules\PersonalResource\TextTokens\TextTokens.lua
+Modules\PersonalResource\TextTokens\HealthTokens.lua
+Modules\PersonalResource\TextTokens\PowerTokens.lua
+Modules\PersonalResource\TextTokens\IconTokens.lua
+Modules\PersonalResource\TextTokens\StatusTokens.lua
+Modules\PersonalResource\TextTokens\UnitTokens.lua
+Modules\PersonalResource\TextTokens\InfoTokens.lua
 Modules\PersonalResource\Style.lua
 Modules\PersonalResource\Layout.lua
 

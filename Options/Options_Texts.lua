@@ -366,6 +366,10 @@ local function BuildTextEntryArgs()
 							desc = "Format strings:\n" ..
 								"Health: {hp}, {hp:short}, {hp:%}, {hp:%.0f}, {hp:bln}, {hpmax}, {hpmax:short}\n" ..
 								"Power: {power} or {mana}, {power:short}, {power:%}, {power:bln}, {powermax}, {powermax:short}\n" ..
+								"Icons: {mark}, {mark:target}, {combat}, {resting}, {dead}, {ghost}\n" ..
+								"Status: {incombat}, {group}, {role}, {pvp}\n" ..
+								"Unit: {targetname}, {targetname:short}, {targethealth}, {targetlevel}, {level}, {class}, {class:short}\n" ..
+								"Info: {zone}, {fps}, {latency}, {latency:local}, {latency:world}, {latency:1f}, {latency:world:1f}, {time}, {time:12}\n" ..
 								"{hp:bln} uses BreakUpLargeNumbers\n" ..
 								"You can add arbitrary text, e.g.: '({hp})' or 'MP: {power} / {powermax}'",
 							order = 1,
