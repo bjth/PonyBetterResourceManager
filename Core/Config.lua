@@ -165,6 +165,198 @@ ns.Defaults = {
 			textDefaultColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
 			texts = {},
 		},
+		focusResource = {
+			enabled = false,
+			
+			-- Visuals (reuse same structure as targetResource)
+			healthTexture = "Blizzard",
+			powerTexture = "Blizzard",
+			
+			-- Border styling
+			healthBorderStyle = "Default",
+			healthBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			healthBorderSize = 1.0,
+			powerBorderStyle = "Default",
+			powerBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			powerBorderSize = 1.0,
+			
+			-- Colors
+			overrideHealthColor = false,
+			healthColor = { r = 0.0, g = 0.8, b = 0.0, a = 1.0 },
+			overridePowerColor = false,
+			powerColor = { r = 0.0, g = 0.4, b = 1.0, a = 1.0 },
+			
+			-- Overheal and absorb styling
+			overhealColor = { r = 0.0, g = 0.659, b = 0.608 },
+			overhealTexture = nil,
+			absorbColor = { r = 0.0, g = 0.8, b = 1.0 },
+			absorbTexture = nil,
+			showOverheal = true,
+			showAbsorb = true,
+			
+			-- Background support
+			healthBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			powerBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			
+			-- Layout
+			scale = 1.0,
+			healthWidth = 200,
+			healthHeight = 20,
+			powerWidth = 200,
+			powerHeight = 12,
+			healthOffsetX = 0,
+			healthOffsetY = 0,
+			powerOffsetX = 0,
+			powerOffsetY = 0,
+			
+			-- Visibility
+			showHealthBar = true,
+			showPowerBar = true,
+			hideFocusFrame = false,
+			
+			-- Texts
+			healthTextEnabled = false,
+			textDefaultFont = "FRIZQT",
+			textDefaultSize = 18,
+			textDefaultColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+			texts = {},
+		},
+		petResource = {
+			enabled = false,
+			
+			-- Visuals (reuse same structure as targetResource)
+			healthTexture = "Blizzard",
+			powerTexture = "Blizzard",
+			
+			-- Border styling
+			healthBorderStyle = "Default",
+			healthBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			healthBorderSize = 1.0,
+			powerBorderStyle = "Default",
+			powerBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			powerBorderSize = 1.0,
+			
+			-- Colors
+			overrideHealthColor = false,
+			healthColor = { r = 0.0, g = 0.8, b = 0.0, a = 1.0 },
+			overridePowerColor = false,
+			powerColor = { r = 0.0, g = 0.4, b = 1.0, a = 1.0 },
+			
+			-- Overheal and absorb styling
+			overhealColor = { r = 0.0, g = 0.659, b = 0.608 },
+			overhealTexture = nil,
+			absorbColor = { r = 0.0, g = 0.8, b = 1.0 },
+			absorbTexture = nil,
+			showOverheal = true,
+			showAbsorb = true,
+			
+			-- Background support
+			healthBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			powerBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			
+			-- Layout
+			scale = 1.0,
+			healthWidth = 200,
+			healthHeight = 20,
+			powerWidth = 200,
+			powerHeight = 12,
+			healthOffsetX = 0,
+			healthOffsetY = 0,
+			powerOffsetX = 0,
+			powerOffsetY = 0,
+			
+			-- Visibility
+			showHealthBar = true,
+			showPowerBar = true,
+			hidePetFrame = false,
+			
+			-- Texts
+			healthTextEnabled = false,
+			textDefaultFont = "FRIZQT",
+			textDefaultSize = 18,
+			textDefaultColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+			texts = {},
+		},
+		targetOfTargetResource = {
+			enabled = false,
+			
+			-- Visuals (reuse same structure as targetResource)
+			healthTexture = "Blizzard",
+			powerTexture = "Blizzard",
+			
+			-- Border styling
+			healthBorderStyle = "Default",
+			healthBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			healthBorderSize = 1.0,
+			powerBorderStyle = "Default",
+			powerBorderColor = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			powerBorderSize = 1.0,
+			
+			-- Colors
+			overrideHealthColor = false,
+			healthColor = { r = 0.0, g = 0.8, b = 0.0, a = 1.0 },
+			overridePowerColor = false,
+			powerColor = { r = 0.0, g = 0.4, b = 1.0, a = 1.0 },
+			
+			-- Overheal and absorb styling
+			overhealColor = { r = 0.0, g = 0.659, b = 0.608 },
+			overhealTexture = nil,
+			absorbColor = { r = 0.0, g = 0.8, b = 1.0 },
+			absorbTexture = nil,
+			showOverheal = true,
+			showAbsorb = true,
+			
+			-- Background support
+			healthBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			powerBarBackground = {
+				enabled = false,
+				texture = "Interface\\TargetingFrame\\UI-StatusBar",
+				color = { r = 0.0, g = 0.0, b = 0.0, a = 0.5 },
+			},
+			
+			-- Layout
+			scale = 1.0,
+			healthWidth = 200,
+			healthHeight = 20,
+			powerWidth = 200,
+			powerHeight = 12,
+			healthOffsetX = 0,
+			healthOffsetY = 0,
+			powerOffsetX = 0,
+			powerOffsetY = 0,
+			
+			-- Visibility
+			showHealthBar = true,
+			showPowerBar = true,
+			hideTargetOfTargetFrame = false,
+			
+			-- Texts
+			healthTextEnabled = false,
+			textDefaultFont = "FRIZQT",
+			textDefaultSize = 18,
+			textDefaultColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+			texts = {},
+		},
 	},
 };
 

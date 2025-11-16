@@ -5,6 +5,27 @@ local addon = ns.Addon;
 local Options = {};
 ns.Options = Options;
 
+-- Initialize ResourceTypeRegistry early so other Options files can register
+if not ns.ResourceTypeRegistry then
+	ns.ResourceTypeRegistry = {};
+end
+
+-- Registry for option groups
+local optionRegistry = {};
+
+-- Register an option group
+-- key: unique identifier (e.g., "personalResource", "targetResource")
+-- name: display name (e.g., "Personal Resource", "Target Resource")
+-- order: display order (lower numbers appear first)
+-- builder: function or table that returns the option group
+function Options:RegisterOptionGroup(key, name, order, builder)
+	optionRegistry[key] = {
+		name = name,
+		order = order,
+		builder = builder,
+	};
+end
+
 function Options:Initialize()
 	if not addon or not addon.db then
 		return;
@@ -21,54 +42,100 @@ function Options:Initialize()
 		return;
 	end
 
-	local personalGroup = ns.PersonalResourceOptions and ns.PersonalResourceOptions:BuildOptions() or nil;
-	local targetGroup = ns.TargetResourceOptions and ns.TargetResourceOptions:BuildOptions() or nil;
-	local textGroupBuilder = ns.PersonalResourceTextOptions and ns.PersonalResourceTextOptions:BuildOptions() or nil;
-	local powerColorGroup = ns.PowerColorOptions and ns.PowerColorOptions:BuildOptions() or nil;
-
 	-- Build options table as a function so it rebuilds dynamically when text entries change
 	local function BuildOptionsTable()
-		-- textGroupBuilder may be a function (for dynamic options) or a table (for static options)
-		local textGroup = type(textGroupBuilder) == "function" and textGroupBuilder() or textGroupBuilder;
+		local args = {};
+		
+		-- Unit frame resource keys (to be grouped under "Unit Configuration")
+		local unitFrameKeys = {
+			"personalResource",
+			"targetResource",
+			"focusResource",
+			"petResource",
+			"targetOfTargetResource",
+		};
+		
+		-- Sort registered options by order
+		local sortedKeys = {};
+		for key, _ in pairs(optionRegistry) do
+			table.insert(sortedKeys, key);
+		end
+		table.sort(sortedKeys, function(a, b)
+			local orderA = optionRegistry[a].order or 999;
+			local orderB = optionRegistry[b].order or 999;
+			return orderA < orderB;
+		end);
+		
+		-- Build Unit Configuration group
+		local unitConfigArgs = {};
+		local unitConfigOrder = 1;
+		
+		-- Build args from registry
+		for _, key in ipairs(sortedKeys) do
+			local entry = optionRegistry[key];
+			local builder = entry.builder;
+			
+			-- builder may be a function (for dynamic options) or a table (for static options)
+			local group = type(builder) == "function" and builder() or builder;
+			
+			-- Some builders (like TextOptions) return a function that needs to be called again
+			if type(group) == "function" then
+				group = group();
+			end
+			
+			if group and type(group) == "table" then
+				-- Check if this is a unit frame resource
+				local isUnitFrame = false;
+				for _, unitKey in ipairs(unitFrameKeys) do
+					if key == unitKey then
+						isUnitFrame = true;
+						break;
+					end
+				end
+				
+				if isUnitFrame then
+					-- Add to Unit Configuration group
+					unitConfigArgs[key] = {
+						type = "group",
+						name = entry.name,
+						order = unitConfigOrder,
+						args = group.args,
+						get = group.get,
+						set = group.set,
+						childGroups = group.childGroups, -- Preserve childGroups (e.g., "tab" for tabs)
+					};
+					unitConfigOrder = unitConfigOrder + 1;
+				else
+					-- Add to root args
+					args[key] = {
+						type = "group",
+						name = entry.name,
+						order = entry.order,
+						args = group.args,
+						get = group.get,
+						set = group.set,
+						childGroups = group.childGroups, -- Preserve childGroups (e.g., "tab" for tabs)
+					};
+				end
+			end
+		end
+		
+		-- Add Unit Configuration group to root args
+		if next(unitConfigArgs) then
+			args.unitConfiguration = {
+				type = "group",
+				name = "Unit Configuration",
+				order = 1,
+				childGroups = "tree",
+				args = unitConfigArgs,
+			};
+		end
 
 		return {
 			type = "group",
 			name = "Pony Better Resource Manager",
-			childGroups = "tab",
-			args = {
-				personalResource = personalGroup and {
-					type = "group",
-					name = "Personal Resource",
-					order = 1,
-					args = personalGroup.args,
-					get = personalGroup.get,
-					set = personalGroup.set,
-				} or nil,
-				targetResource = targetGroup and {
-					type = "group",
-					name = "Target Resource",
-					order = 2,
-					args = targetGroup.args,
-					get = targetGroup.get,
-					set = targetGroup.set,
-				} or nil,
-				texts = textGroup and {
-					type = "group",
-					name = "Data Texts",
-					order = 3,
-					args = textGroup.args,
-					get = textGroup.get,
-					set = textGroup.set,
-				} or nil,
-				powerColors = powerColorGroup and {
-					type = "group",
-					name = "Power Colors",
-					order = 4,
-					args = powerColorGroup.args,
-					get = powerColorGroup.get,
-					set = powerColorGroup.set,
-				} or nil,
-			},
+			childGroups = "tree",
+			args = args,
 		};
 	end
 

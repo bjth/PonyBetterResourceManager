@@ -4,19 +4,14 @@ local addon = ns.Addon;
 local LSM = ns.Media and ns.Media.LSM;
 
 local Style = {};
-ns.TargetResourceStyle = Style;
-
-local BreakUpLargeNumbers = BreakUpLargeNumbers;
-local AbbreviateLargeNumbers = AbbreviateLargeNumbers or BreakUpLargeNumbers;
-
--- Get the DataTokens system
-local DataTokens = ns.DataTokens;
+ns.FocusResourceStyle = Style;
 
 -- Get shared utilities
 local PowerColor = ns.PowerColor;
 local BarStyling = ns.BarStyling;
+local DataTokens = ns.DataTokens;
 
--- Helper function to get status bar texture (similar to BarStyling)
+-- Helper function to get status bar texture
 local function GetStatusBarTexture(key)
 	if not LSM then
 		return nil;
@@ -40,9 +35,8 @@ function Style:ApplyHealthBarStyle(frame, db)
 
 	-- Use shared bar styling module
 	if BarStyling then
-		BarStyling:ApplyHealthBarStyle(frame, frame.healthbar, frame.HealthBarsContainer, db, "target");
+		BarStyling:ApplyHealthBarStyle(frame, frame.healthbar, frame.HealthBarsContainer, db, "focus");
 		
-		-- TargetResource also needs to set healthbar size directly to match container
 		local healthBar = frame.healthbar;
 		if healthBar then
 			if db.healthWidth and db.healthWidth > 0 then
@@ -64,21 +58,11 @@ function Style:ApplyHealthBarStyle(frame, db)
 		self:ApplyAbsorbBarStyle(frame, db);
 	end
 
-	-- Ensure the health text is updated whenever we (re)style the bar.
+	-- Ensure the health text is updated
 	self:UpdateHealthText(frame, db);
 end
 
 local UnitFrameStyle = ns.UnitFrameStyle;
-
-local function HasDynamicTokens(formatStr)
-	if not formatStr then
-		return false;
-	end
-	local lower = string.lower(formatStr);
-	return string.find(lower, "{fps}") ~= nil or 
-	       string.find(lower, "{latency}") ~= nil or 
-	       string.find(lower, "{time}") ~= nil;
-end
 
 function Style:UpdateHealthText(frame, db)
 	local bar = frame.healthbar;
@@ -86,7 +70,7 @@ function Style:UpdateHealthText(frame, db)
 		return;
 	end
 	
-	if not UnitExists("target") then
+	if not UnitExists("focus") then
 		return;
 	end
 	
@@ -96,11 +80,11 @@ function Style:UpdateHealthText(frame, db)
 			db, 
 			bar, 
 			"HEALTH",
-			"target",
-			"TARGET",
-			function(template, current, max) return UnitFrameStyle:FormatHealth("target", template, current, max); end,
-			function() return UnitHealth("target"); end,
-			function() return UnitHealthMax("target"); end
+			"focus",
+			"FOCUS",
+			function(template, current, max) return UnitFrameStyle:FormatHealth("focus", template, current, max); end,
+			function() return UnitHealth("focus"); end,
+			function() return UnitHealthMax("focus"); end
 		);
 	end
 end
@@ -111,22 +95,22 @@ function Style:UpdatePowerText(frame, db)
 		return;
 	end
 	
-	if not UnitExists("target") then
+	if not UnitExists("focus") then
 		return;
 	end
 	
-	local powerType = UnitPowerType("target");
+	local powerType = UnitPowerType("focus");
 	if UnitFrameStyle then
 		UnitFrameStyle:UpdateTextForBar(
 			frame, 
 			db, 
 			bar, 
 			"POWER",
-			"target",
-			"TARGET",
-			function(template, current, max) return UnitFrameStyle:FormatPower("target", template, current, max); end,
-			function() return UnitPower("target", powerType); end,
-			function() return UnitPowerMax("target", powerType); end
+			"focus",
+			"FOCUS",
+			function(template, current, max) return UnitFrameStyle:FormatPower("focus", template, current, max); end,
+			function() return UnitPower("focus", powerType); end,
+			function() return UnitPowerMax("focus", powerType); end
 		);
 	end
 end
@@ -140,9 +124,8 @@ function Style:ApplyPowerBarStyle(frame, db)
 		return;
 	end
 
-	-- Use shared bar styling module
 	if BarStyling then
-		BarStyling:ApplyPowerBarStyle(frame, frame.PowerBar, db, "target");
+		BarStyling:ApplyPowerBarStyle(frame, frame.PowerBar, db, "focus");
 	end
 
 	self:UpdatePowerText(frame, db);
@@ -155,7 +138,6 @@ function Style:ApplyOverhealBarStyle(frame, db)
 	
 	local overhealBar = frame.overhealBar;
 	
-	-- Apply texture (overhealBar is a status bar, so use SetStatusBarTexture)
 	local textureKey = db.overhealTexture;
 	if textureKey and textureKey ~= "" then
 		local texture = GetStatusBarTexture(textureKey);
@@ -163,7 +145,6 @@ function Style:ApplyOverhealBarStyle(frame, db)
 			overhealBar:SetStatusBarTexture(texture);
 		end
 	else
-		-- Use default texture (same as health bar)
 		if frame.healthbar then
 			local defaultTexture = frame.healthbar:GetStatusBarTexture();
 			if defaultTexture then
@@ -174,7 +155,6 @@ function Style:ApplyOverhealBarStyle(frame, db)
 		end
 	end
 	
-	-- Apply color (use SetStatusBarColor for status bars)
 	local color = db.overhealColor;
 	if color then
 		local r = color.r or 0.0;
@@ -192,7 +172,6 @@ function Style:ApplyAbsorbBarStyle(frame, db)
 	
 	local absorbBar = frame.absorbBar;
 	
-	-- Apply texture (absorbBar is a status bar, so use SetStatusBarTexture)
 	local textureKey = db.absorbTexture;
 	if textureKey and textureKey ~= "" then
 		local texture = GetStatusBarTexture(textureKey);
@@ -200,17 +179,13 @@ function Style:ApplyAbsorbBarStyle(frame, db)
 			absorbBar:SetStatusBarTexture(texture);
 		end
 	else
-		-- Use default texture (Blizzard's shield texture)
 		absorbBar:SetStatusBarTexture("Interface\\RaidFrame\\Shield-Fill");
 	end
 	
-	-- Hide the status bar's built-in background (the unfilled portion) so it doesn't cover the health bar
-	-- Status bars have a Background property that shows the unfilled portion
 	if absorbBar.Background then
 		absorbBar.Background:Hide();
 	end
 	
-	-- Apply color (use SetStatusBarColor for status bars)
 	local color = db.absorbColor;
 	if color then
 		local r = color.r or 0.0;

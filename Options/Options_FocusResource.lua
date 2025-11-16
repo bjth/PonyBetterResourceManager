@@ -4,11 +4,11 @@ local addon = ns.Addon;
 local LSM = ns.Media and ns.Media.LSM;
 local SharedOptions = ns.SharedResourceOptions;
 
-local TargetOptions = {};
-ns.TargetResourceOptions = TargetOptions;
+local FocusOptions = {};
+ns.focusResourceOptions = FocusOptions;
 
 local function GetDB()
-	return addon.db and addon.db.profile and addon.db.profile.targetResource;
+	return addon.db and addon.db.profile and addon.db.profile.focusResource;
 end
 
 local function Get(info)
@@ -55,7 +55,7 @@ local function BuildStatusBarValues()
 	return values;
 end
 
-function TargetOptions:BuildOptions()
+function FocusOptions:BuildOptions()
 	-- Organize options into tabs like SUF: General, Health Bar, Power Bar, Overheal & Absorb, Layout, Texts
 	local args = {
 		general = {
@@ -67,14 +67,14 @@ function TargetOptions:BuildOptions()
 			args = {
 				enabled = {
 					type = "toggle",
-					name = "Enable Target Display",
-					desc = "Show a resource display for your target (similar to the personal resource display).",
+					name = "Enable Focus Display",
+					desc = "Show a resource display for your Focus (similar to the personal resource display).",
 					order = 1,
 				},
-				hideTargetFrame = {
+				hideFocusFrame = {
 					type = "toggle",
-					name = "Hide Target Frame",
-					desc = "Hide the built-in Target frame (TargetFrame) since we are replacing it with the Target Display.",
+					name = "Hide Focus Frame",
+					desc = "Hide the built-in Focus frame (FocusFrame) since we are replacing it with the Focus Display.",
 					order = 2,
 				},
 			},
@@ -527,7 +527,7 @@ function TargetOptions:BuildOptions()
 				scale = {
 					type = "range",
 					name = "Scale",
-					desc = "Scale of the Target Display frame.",
+					desc = "Scale of the Focus Display frame.",
 					min = 0.05,
 					max = 5.00,
 					step = 0.05,
@@ -543,17 +543,17 @@ function TargetOptions:BuildOptions()
 		local function GetTextsDB()
 			return addon.db and addon.db.profile and addon.db.profile.personalResource;
 		end
-		local function GetTargetDB()
-			return addon.db and addon.db.profile and addon.db.profile.targetResource;
+		local function GetFocusDB()
+			return addon.db and addon.db.profile and addon.db.profile.focusResource;
 		end
 		local textsArgs = {};
 		TextOptionsShared:AddTextSectionToOptions(
 			textsArgs,
-			"TARGET",
-			"Target",
+			"FOCUS",
+			"Focus",
 			{"HEALTH", "POWER"},
 			GetTextsDB,
-			GetTargetDB,
+			GetFocusDB,
 			1
 		);
 		if next(textsArgs) then
@@ -568,7 +568,7 @@ function TargetOptions:BuildOptions()
 	
 	return {
 		type = "group",
-		name = "Target",
+		name = "Focus",
 		childGroups = "tab",
 		get = Get,
 		set = Set,
@@ -578,10 +578,10 @@ end
 
 -- Register this option group
 if ns.Options then
-	ns.Options:RegisterOptionGroup("targetResource", "Target", 2, function() return TargetOptions:BuildOptions(); end);
+	ns.Options:RegisterOptionGroup("focusResource", "Focus", 3, function() return FocusOptions:BuildOptions(); end);
 end
 
 -- Register with Data Texts system
 if ns.PersonalResourceTextOptions then
-	ns.PersonalResourceTextOptions:RegisterResourceType("TARGET", "Target", {"HEALTH", "POWER"}, 2);
+	ns.PersonalResourceTextOptions:RegisterResourceType("FOCUS", "Focus", {"HEALTH", "POWER"}, 3);
 end

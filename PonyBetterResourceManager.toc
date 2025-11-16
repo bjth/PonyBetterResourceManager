@@ -25,10 +25,15 @@ Core\Media.lua
 Core\EditMode.lua
 Core\EditModeHelper.lua
 Core\EditMode_TargetResource.lua
+Core\EditMode_FocusResource.lua
+Core\EditMode_PetResource.lua
+Core\EditMode_TargetOfTargetResource.lua
 
 Modules\Shared\PowerColor.lua
 Modules\Shared\BarStyling.lua
 Modules\Shared\FrameLayout.lua
+Modules\Shared\UnitFrameBase.lua
+Modules\Shared\UnitFrameStyle.lua
 Modules\Shared\DataTokens\DataTokens.lua
 Modules\Shared\DataTokens\HealthTokens.lua
 Modules\Shared\DataTokens\PowerTokens.lua
@@ -46,11 +51,27 @@ Modules\TargetResource\TargetResource.lua
 Modules\TargetResource\Style.lua
 Modules\TargetResource\Layout.lua
 
+Modules\FocusResource\FocusResource.lua
+Modules\FocusResource\Style.lua
+Modules\FocusResource\Layout.lua
+
+Modules\PetResource\PetResource.lua
+Modules\PetResource\Style.lua
+Modules\PetResource\Layout.lua
+
+Modules\TargetOfTargetResource\TargetOfTargetResource.lua
+Modules\TargetOfTargetResource\Style.lua
+Modules\TargetOfTargetResource\Layout.lua
+
 Options\Options.lua
 Options\Options_Shared.lua
+Options\Options_Texts_Shared.lua
+Options\Options_Texts.lua
 Options\Options_PersonalResource.lua
 Options\Options_TargetResource.lua
-Options\Options_Texts.lua
+Options\Options_FocusResource.lua
+Options\Options_PetResource.lua
+Options\Options_TargetOfTargetResource.lua
 Options\Options_PowerColors.lua
 
 

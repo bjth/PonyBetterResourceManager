@@ -55,17 +55,15 @@ local function BuildStatusBarValues()
 end
 
 function PersonalOptions:BuildOptions()
-	return {
-		type = "group",
-		name = "Personal Resource",
-		get = Get,
-		set = Set,
-		args = {
-			generalHeader = {
-				type = "header",
-				name = "General",
-				order = 1,
-			},
+	-- Organize options into tabs like SUF: General, Health Bar, Power Bar, Layout, Texts, etc.
+	local args = {
+		general = {
+			type = "group",
+			name = "General",
+			order = 1,
+			get = Get,
+			set = Set,
+			args = {
 			hidePlayerFrame = {
 				type = "toggle",
 				name = "Hide Player Frame",
@@ -146,22 +144,26 @@ function PersonalOptions:BuildOptions()
 				end,
 				order = 4,
 			},
-			divider1 = {
-				type = "header",
-				name = "Health Bar",
-				order = 10,
 			},
+		},
+		healthBar = {
+			type = "group",
+			name = "Health Bar",
+			order = 2,
+			get = Get,
+			set = Set,
+			args = {
 			showHealthBar = {
 				type = "toggle",
 				name = "Show Health Bar",
 				desc = "If disabled, hides the health bar even when Blizzard would normally show it.",
-				order = 11,
+				order = 1,
 			},
 			healthSizeGroup = {
 				type = "group",
 				inline = true,
-				name = "",
-				order = 12,
+				name = "Size",
+				order = 10,
 				get = Get,
 				set = Set,
 				args = {
@@ -192,8 +194,8 @@ function PersonalOptions:BuildOptions()
 			healthBorderGroup = {
 				type = "group",
 				inline = true,
-				name = "",
-				order = 13,
+				name = "Border",
+				order = 20,
 				args = {
 					healthBorderStyle = {
 						type = "select",
@@ -226,8 +228,8 @@ function PersonalOptions:BuildOptions()
 			healthTextureGroup = {
 				type = "group",
 				inline = true,
-				name = "",
-				order = 14,
+				name = "Texture & Color",
+				order = 30,
 				args = {
 					healthTexture = {
 						type = "select",
@@ -355,208 +357,11 @@ function PersonalOptions:BuildOptions()
 					},
 				},
 			},
-			divider2 = {
-				type = "header",
-				name = "Power Bar",
-				order = 20,
-			},
-			showPowerBar = {
-				type = "toggle",
-				name = "Show Power Bar",
-				desc = "If disabled, hides the power bar even when Blizzard would normally show it.",
-				order = 21,
-			},
-			powerSizeGroup = {
-				type = "group",
-				inline = true,
-				name = "",
-				order = 22,
-				get = Get,
-				set = Set,
-				args = {
-					powerWidth = {
-						type = "range",
-						name = "Power Width",
-						desc = "Override width of the power bar.",
-						min = 0,
-						max = 1000,
-						step = 1,
-						get = Get,
-						set = Set,
-						order = 1,
-					},
-					powerHeight = {
-						type = "range",
-						name = "Power Height",
-						desc = "Override height of the power bar.",
-						min = 0,
-						max = 200,
-						step = 1,
-						get = Get,
-						set = Set,
-						order = 2,
-					},
-				},
-			},
-			powerOffsetGroup = {
-				type = "group",
-				inline = true,
-				name = "",
-				order = 23,
-				args = {
-					powerOffsetX = {
-						type = "range",
-						name = "Power X Offset",
-						desc = "Horizontal offset for the power bar.",
-						min = -500,
-						max = 500,
-						step = 1,
-						order = 1,
-					},
-					powerOffsetY = {
-						type = "range",
-						name = "Power Y Offset",
-						desc = "Vertical offset for the power bar.",
-						min = -500,
-						max = 500,
-						step = 1,
-						order = 2,
-					},
-				},
-			},
-			powerBorderGroup = {
-				type = "group",
-				inline = true,
-				name = "",
-				order = 24,
-				args = {
-					powerBorderStyle = {
-						type = "select",
-						name = "Border Style",
-						desc = "Style for the power bar border.",
-						values = {
-							Default = "Default",
-							None = "None",
-						},
-						order = 0,
-					},
-					powerBorderSize = {
-						type = "range",
-						name = "Border Size",
-						desc = "Scale of the power bar border.",
-						min = 0.5,
-						max = 3.0,
-						step = 0.05,
-						order = 0.5,
-					},
-					powerBorderColor = {
-						type = "color",
-						name = "Border Color",
-						desc = "Color of the power bar border.",
-						hasAlpha = true,
-						order = 1,
-					},
-				},
-			},
-			powerTextureGroup = {
-				type = "group",
-				inline = true,
-				name = "",
-				order = 25,
-				args = {
-					powerTexture = {
-						type = "select",
-						name = "Power Texture",
-						desc = "Status bar texture for the power bar.",
-						values = BuildStatusBarValues,
-						order = 1,
-					},
-					powerBackgroundEnabled = {
-						type = "toggle",
-						name = "Background Enable",
-						desc = "Show background behind power bar.",
-						order = 4,
-						get = function()
-							local db = GetDB();
-							return db and db.powerBarBackground and db.powerBarBackground.enabled;
-						end,
-						set = function(info, value)
-							local db = GetDB();
-							if db and db.powerBarBackground then
-								db.powerBarBackground.enabled = value;
-								if addon.NotifyConfigChanged then
-									addon:NotifyConfigChanged();
-								end
-							end
-						end,
-					},
-					powerBackgroundTexture = {
-						type = "select",
-						name = "Background Texture",
-						desc = "Background texture for power bar.",
-						values = BuildStatusBarValues,
-						order = 5,
-						get = function()
-							local db = GetDB();
-							return db and db.powerBarBackground and db.powerBarBackground.texture or "";
-						end,
-						set = function(info, value)
-							local db = GetDB();
-							if db and db.powerBarBackground then
-								db.powerBarBackground.texture = value;
-								if addon.NotifyConfigChanged then
-									addon:NotifyConfigChanged();
-								end
-							end
-						end,
-						disabled = function()
-							local db = GetDB();
-							return not (db and db.powerBarBackground and db.powerBarBackground.enabled);
-						end,
-					},
-					powerBackgroundColor = {
-						type = "color",
-						name = "Background Color",
-						desc = "Background color for power bar.",
-						hasAlpha = true,
-						order = 6,
-						get = function()
-							local db = GetDB();
-							if db and db.powerBarBackground and db.powerBarBackground.color then
-								local c = db.powerBarBackground.color;
-								return c.r, c.g, c.b, c.a;
-							end
-							return 0, 0, 0, 0.5;
-						end,
-						set = function(info, r, g, b, a)
-							local db = GetDB();
-							if db and db.powerBarBackground and db.powerBarBackground.color then
-								db.powerBarBackground.color.r = r;
-								db.powerBarBackground.color.g = g;
-								db.powerBarBackground.color.b = b;
-								db.powerBarBackground.color.a = a;
-								if addon.NotifyConfigChanged then
-									addon:NotifyConfigChanged();
-								end
-							end
-						end,
-						disabled = function()
-							local db = GetDB();
-							return not (db and db.powerBarBackground and db.powerBarBackground.enabled);
-						end,
-					},
-				},
-			},
-			overhealAbsorbHeader = {
-				type = "header",
-				name = "Overheal & Absorb",
-				order = 28,
-			},
 			overhealAbsorbGroup = {
 				type = "group",
 				inline = true,
-				name = "",
-				order = 29,
+				name = "Overheal & Absorb",
+				order = 40,
 				args = {
 					showOverheal = {
 						type = "toggle",
@@ -642,11 +447,211 @@ function PersonalOptions:BuildOptions()
 					},
 				},
 			},
-			divider3 = {
-				type = "header",
-				name = "Layout",
-				order = 30,
 			},
+		},
+		powerBar = {
+			type = "group",
+			name = "Power Bar",
+			order = 3,
+			get = Get,
+			set = Set,
+			args = {
+			showPowerBar = {
+				type = "toggle",
+				name = "Show Power Bar",
+				desc = "If disabled, hides the power bar even when Blizzard would normally show it.",
+				order = 1,
+			},
+			powerSizeGroup = {
+				type = "group",
+				inline = true,
+				name = "Size",
+				order = 10,
+				get = Get,
+				set = Set,
+				args = {
+					powerWidth = {
+						type = "range",
+						name = "Power Width",
+						desc = "Override width of the power bar.",
+						min = 0,
+						max = 1000,
+						step = 1,
+						get = Get,
+						set = Set,
+						order = 1,
+					},
+					powerHeight = {
+						type = "range",
+						name = "Power Height",
+						desc = "Override height of the power bar.",
+						min = 0,
+						max = 200,
+						step = 1,
+						get = Get,
+						set = Set,
+						order = 2,
+					},
+				},
+			},
+			powerOffsetGroup = {
+				type = "group",
+				inline = true,
+				name = "Offset",
+				order = 20,
+				args = {
+					powerOffsetX = {
+						type = "range",
+						name = "Power X Offset",
+						desc = "Horizontal offset for the power bar.",
+						min = -500,
+						max = 500,
+						step = 1,
+						order = 1,
+					},
+					powerOffsetY = {
+						type = "range",
+						name = "Power Y Offset",
+						desc = "Vertical offset for the power bar.",
+						min = -500,
+						max = 500,
+						step = 1,
+						order = 2,
+					},
+				},
+			},
+			powerBorderGroup = {
+				type = "group",
+				inline = true,
+				name = "Border",
+				order = 30,
+				args = {
+					powerBorderStyle = {
+						type = "select",
+						name = "Border Style",
+						desc = "Style for the power bar border.",
+						values = {
+							Default = "Default",
+							None = "None",
+						},
+						order = 0,
+					},
+					powerBorderSize = {
+						type = "range",
+						name = "Border Size",
+						desc = "Scale of the power bar border.",
+						min = 0.5,
+						max = 3.0,
+						step = 0.05,
+						order = 0.5,
+					},
+					powerBorderColor = {
+						type = "color",
+						name = "Border Color",
+						desc = "Color of the power bar border.",
+						hasAlpha = true,
+						order = 1,
+					},
+				},
+			},
+			powerTextureGroup = {
+				type = "group",
+				inline = true,
+				name = "Texture & Background",
+				order = 40,
+				args = {
+					powerTexture = {
+						type = "select",
+						name = "Power Texture",
+						desc = "Status bar texture for the power bar.",
+						values = BuildStatusBarValues,
+						order = 1,
+					},
+					powerBackgroundEnabled = {
+						type = "toggle",
+						name = "Background Enable",
+						desc = "Show background behind power bar.",
+						order = 4,
+						get = function()
+							local db = GetDB();
+							return db and db.powerBarBackground and db.powerBarBackground.enabled;
+						end,
+						set = function(info, value)
+							local db = GetDB();
+							if db and db.powerBarBackground then
+								db.powerBarBackground.enabled = value;
+								if addon.NotifyConfigChanged then
+									addon:NotifyConfigChanged();
+								end
+							end
+						end,
+					},
+					powerBackgroundTexture = {
+						type = "select",
+						name = "Background Texture",
+						desc = "Background texture for power bar.",
+						values = BuildStatusBarValues,
+						order = 5,
+						get = function()
+							local db = GetDB();
+							return db and db.powerBarBackground and db.powerBarBackground.texture or "";
+						end,
+						set = function(info, value)
+							local db = GetDB();
+							if db and db.powerBarBackground then
+								db.powerBarBackground.texture = value;
+								if addon.NotifyConfigChanged then
+									addon:NotifyConfigChanged();
+								end
+							end
+						end,
+						disabled = function()
+							local db = GetDB();
+							return not (db and db.powerBarBackground and db.powerBarBackground.enabled);
+						end,
+					},
+					powerBackgroundColor = {
+						type = "color",
+						name = "Background Color",
+						desc = "Background color for power bar.",
+						hasAlpha = true,
+						order = 6,
+						get = function()
+							local db = GetDB();
+							if db and db.powerBarBackground and db.powerBarBackground.color then
+								local c = db.powerBarBackground.color;
+								return c.r, c.g, c.b, c.a;
+							end
+							return 0, 0, 0, 0.5;
+						end,
+						set = function(info, r, g, b, a)
+							local db = GetDB();
+							if db and db.powerBarBackground and db.powerBarBackground.color then
+								db.powerBarBackground.color.r = r;
+								db.powerBarBackground.color.g = g;
+								db.powerBarBackground.color.b = b;
+								db.powerBarBackground.color.a = a;
+								if addon.NotifyConfigChanged then
+									addon:NotifyConfigChanged();
+								end
+							end
+						end,
+						disabled = function()
+							local db = GetDB();
+							return not (db and db.powerBarBackground and db.powerBarBackground.enabled);
+						end,
+					},
+				},
+			},
+			},
+		},
+		layout = {
+			type = "group",
+			name = "Layout",
+			order = 4,
+			get = Get,
+			set = Set,
+			args = {
 			scale = {
 				type = "range",
 				name = "Scale",
@@ -654,32 +659,46 @@ function PersonalOptions:BuildOptions()
 				min = 0.05,
 				max = 5.00,
 				step = 0.05,
-				order = 31,
+				order = 1,
 			},
-
-			alternateHeader = {
-				type = "header",
-				name = "Alternate Power Bar",
-				order = 40,
 			},
+		},
+		alternatePower = {
+			type = "group",
+			name = "Alternate Power",
+			order = 5,
+			get = Get,
+			set = Set,
+			args = {
 			showAlternatePowerBar = {
 				type = "toggle",
 				name = "Show Alternate Power Bar",
 				desc = "If disabled, hides the alternate power bar (where applicable).",
-				order = 41,
+				order = 1,
 			},
-
-			classHeader = {
-				type = "header",
-				name = "Class Resource Bar",
-				order = 50,
 			},
+		},
+		classResource = {
+			type = "group",
+			name = "Class Resource",
+			order = 6,
+			get = Get,
+			set = Set,
+			args = {
 			showClassResourceBar = {
 				type = "toggle",
 				name = "Show Class Resource Bar",
 				desc = "If disabled, hides the class resource bar (e.g. Holy Power, combo points).",
-				order = 51,
+				order = 1,
 			},
+			classOffsetGroup = {
+				type = "group",
+				inline = true,
+				name = "Offset",
+				order = 10,
+				get = Get,
+				set = Set,
+				args = {
 			classOffsetX = {
 				type = "range",
 				name = "Class Resource X Offset",
@@ -687,19 +706,65 @@ function PersonalOptions:BuildOptions()
 				min = -500,
 				max = 500,
 				step = 1,
-				order = 52,
+				order = 1,
 			},
 			classOffsetY = {
 				type = "range",
-				name = "Class Resource Y Offset",
+				name = "Y Offset",
 				desc = "Vertical offset for the class resource bar container.",
 				min = -500,
 				max = 500,
 				step = 1,
-				order = 53,
+				order = 2,
+			},
+				},
+			},
 			},
 		},
 	};
+	
+	-- Add Texts tab using shared utilities
+	local TextOptionsShared = ns.TextOptionsShared;
+	if TextOptionsShared then
+		local function GetTextsDB()
+			return addon.db and addon.db.profile and addon.db.profile.personalResource;
+		end
+		
+		-- Build texts tab args
+		local textsArgs = TextOptionsShared:BuildResourceTextSection(
+			"PERSONAL",
+			"Personal",
+			{"HEALTH", "POWER", "ALT_POWER", "CLASS"},
+			GetTextsDB,
+			GetDB
+		);
+		
+		-- Add texts tab
+		args.texts = {
+			type = "group",
+			name = "Data",
+			order = 7,
+			args = textsArgs,
+		};
+	end
+	
+	return {
+		type = "group",
+		name = "Personal Resource Display",
+		childGroups = "tab", -- Use tabs for configuration aspects (like SUF)
+		get = Get,
+		set = Set,
+		args = args,
+	};
 end
 
+-- Register this option group
+if ns.Options then
+	ns.Options:RegisterOptionGroup("personalResource", "Personal Resource Display", 1, function() return PersonalOptions:BuildOptions(); end);
+end
+
+-- Register with Data Texts system
+if ns.PersonalResourceTextOptions then
+	ns.PersonalResourceTextOptions:RegisterResourceType("PERSONAL", "Personal", {"HEALTH", "POWER", "ALT_POWER", "CLASS"}, 1);
+end
 

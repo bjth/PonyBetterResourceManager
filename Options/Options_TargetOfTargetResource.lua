@@ -5,10 +5,10 @@ local LSM = ns.Media and ns.Media.LSM;
 local SharedOptions = ns.SharedResourceOptions;
 
 local TargetOptions = {};
-ns.TargetResourceOptions = TargetOptions;
+ns.targetOfTargetOfTargetResourceOptions = TargetOptions;
 
 local function GetDB()
-	return addon.db and addon.db.profile and addon.db.profile.targetResource;
+	return addon.db and addon.db.profile and addon.db.profile.targetOfTargetResource;
 end
 
 local function Get(info)
@@ -67,14 +67,14 @@ function TargetOptions:BuildOptions()
 			args = {
 				enabled = {
 					type = "toggle",
-					name = "Enable Target Display",
-					desc = "Show a resource display for your target (similar to the personal resource display).",
+					name = "Enable Target of Target Display",
+					desc = "Show a resource display for your Target of Target (similar to the personal resource display).",
 					order = 1,
 				},
-				hideTargetFrame = {
+				hideTargetOfTargetFrame = {
 					type = "toggle",
-					name = "Hide Target Frame",
-					desc = "Hide the built-in Target frame (TargetFrame) since we are replacing it with the Target Display.",
+					name = "Hide Target of Target Frame",
+					desc = "Hide the built-in Target of Target frame (TargetFrameToT) since we are replacing it with the Target of Target Display.",
 					order = 2,
 				},
 			},
@@ -527,7 +527,7 @@ function TargetOptions:BuildOptions()
 				scale = {
 					type = "range",
 					name = "Scale",
-					desc = "Scale of the Target Display frame.",
+					desc = "Scale of the Target of Target Display frame.",
 					min = 0.05,
 					max = 5.00,
 					step = 0.05,
@@ -543,17 +543,17 @@ function TargetOptions:BuildOptions()
 		local function GetTextsDB()
 			return addon.db and addon.db.profile and addon.db.profile.personalResource;
 		end
-		local function GetTargetDB()
-			return addon.db and addon.db.profile and addon.db.profile.targetResource;
+		local function GetTargetOfTargetDB()
+			return addon.db and addon.db.profile and addon.db.profile.targetOfTargetResource;
 		end
 		local textsArgs = {};
 		TextOptionsShared:AddTextSectionToOptions(
 			textsArgs,
-			"TARGET",
-			"Target",
+			"TARGETOFTARGET",
+			"Target of Target",
 			{"HEALTH", "POWER"},
 			GetTextsDB,
-			GetTargetDB,
+			GetTargetOfTargetDB,
 			1
 		);
 		if next(textsArgs) then
@@ -568,7 +568,7 @@ function TargetOptions:BuildOptions()
 	
 	return {
 		type = "group",
-		name = "Target",
+		name = "Target of Target",
 		childGroups = "tab",
 		get = Get,
 		set = Set,
@@ -578,10 +578,10 @@ end
 
 -- Register this option group
 if ns.Options then
-	ns.Options:RegisterOptionGroup("targetResource", "Target", 2, function() return TargetOptions:BuildOptions(); end);
+	ns.Options:RegisterOptionGroup("targetOfTargetResource", "Target of Target", 5, function() return TargetOptions:BuildOptions(); end);
 end
 
 -- Register with Data Texts system
 if ns.PersonalResourceTextOptions then
-	ns.PersonalResourceTextOptions:RegisterResourceType("TARGET", "Target", {"HEALTH", "POWER"}, 2);
+	ns.PersonalResourceTextOptions:RegisterResourceType("Target of Target", "Target of Target", {"HEALTH", "POWER"}, 3);
 end

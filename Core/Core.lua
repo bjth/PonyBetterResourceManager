@@ -54,6 +54,21 @@ function addon:OnEnable()
 	if ns.EditModeTargetResource and ns.EditModeTargetResource.Init then
 		ns.EditModeTargetResource:Init();
 	end
+	
+	-- Initialize Edit Mode integration for Focus Resource
+	if ns.EditModeFocusResource and ns.EditModeFocusResource.Init then
+		ns.EditModeFocusResource:Init();
+	end
+	
+	-- Initialize Edit Mode integration for Pet Resource
+	if ns.EditModePetResource and ns.EditModePetResource.Init then
+		ns.EditModePetResource:Init();
+	end
+	
+	-- Initialize Edit Mode integration for Target of Target Resource
+	if ns.EditModeTargetOfTargetResource and ns.EditModeTargetOfTargetResource.Init then
+		ns.EditModeTargetOfTargetResource:Init();
+	end
 end
 
 function addon:OpenConfig()
@@ -73,20 +88,26 @@ function addon:NotifyConfigChanged()
 		SafeCall(personalModule.RefreshFromConfig, personalModule);
 	end
 	
-	local targetModule = self:GetModule("TargetResource", true);
-	if targetModule then
-		-- Check if module should be enabled/disabled
-		local profile = self.db and self.db.profile;
-		local shouldBeEnabled = profile and profile.targetResource and profile.targetResource.enabled == true;
-		
-		if shouldBeEnabled and not targetModule:IsEnabled() then
-			targetModule:Enable();
-		elseif not shouldBeEnabled and targetModule:IsEnabled() then
-			targetModule:Disable();
-		elseif targetModule.RefreshFromConfig then
-			SafeCall(targetModule.RefreshFromConfig, targetModule);
+	local function HandleModuleRefresh(moduleName, profileKey)
+		local module = self:GetModule(moduleName, true);
+		if module then
+			local profile = self.db and self.db.profile;
+			local shouldBeEnabled = profile and profile[profileKey] and profile[profileKey].enabled == true;
+			
+			if shouldBeEnabled and not module:IsEnabled() then
+				module:Enable();
+			elseif not shouldBeEnabled and module:IsEnabled() then
+				module:Disable();
+			elseif module.RefreshFromConfig then
+				SafeCall(module.RefreshFromConfig, module);
+			end
 		end
 	end
+	
+	HandleModuleRefresh("TargetResource", "targetResource");
+	HandleModuleRefresh("FocusResource", "focusResource");
+	HandleModuleRefresh("PetResource", "petResource");
+	HandleModuleRefresh("TargetOfTargetResource", "targetOfTargetResource");
 end
 
 

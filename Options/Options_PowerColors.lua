@@ -70,56 +70,53 @@ local function Set(info, ...)
 end
 
 function PowerColorOptions:BuildOptions()
+	local args = {
+		description = {
+			type = "description",
+			name = "Configure colors for each power type. These colors apply to all resource displays (Personal, Target, etc.).",
+			order = 1,
+		},
+	};
+	
+	-- Add power color options directly to args (not nested in a group)
+	local powerTypes = {
+		{ token = "MANA", name = "Mana" },
+		{ token = "RAGE", name = "Rage" },
+		{ token = "ENERGY", name = "Energy" },
+		{ token = "FOCUS", name = "Focus" },
+		{ token = "RUNIC_POWER", name = "Runic Power" },
+		{ token = "SOUL_SHARDS", name = "Soul Shards" },
+		{ token = "LUNAR_POWER", name = "Lunar Power" },
+		{ token = "HOLY_POWER", name = "Holy Power" },
+		{ token = "MAELSTROM", name = "Maelstrom" },
+		{ token = "INSANITY", name = "Insanity" },
+		{ token = "CHI", name = "Chi" },
+		{ token = "ARCANE_CHARGES", name = "Arcane Charges" },
+		{ token = "COMBO_POINTS", name = "Combo Points" },
+		{ token = "FURY", name = "Fury" },
+		{ token = "PAIN", name = "Pain" },
+	};
+	
+	for i, powerType in ipairs(powerTypes) do
+		args["powerColor_" .. powerType.token] = {
+			type = "color",
+			name = powerType.name,
+			desc = "Color override for " .. powerType.name .. " resource type. Applies to all frames.",
+			hasAlpha = true,
+			order = 10 + i,
+		};
+	end
+	
 	return {
 		type = "group",
 		name = "Power Colors",
 		get = Get,
 		set = Set,
-		args = {
-			description = {
-				type = "description",
-				name = "Configure colors for each power type. These colors apply to all resource displays (Personal, Target, etc.).",
-				order = 1,
-			},
-			powerColorsGroup = {
-				type = "group",
-				inline = false,
-				name = "Power Type Colors",
-				order = 10,
-				args = (function()
-					local args = {};
-					local powerTypes = {
-						{ token = "MANA", name = "Mana" },
-						{ token = "RAGE", name = "Rage" },
-						{ token = "ENERGY", name = "Energy" },
-						{ token = "FOCUS", name = "Focus" },
-						{ token = "RUNIC_POWER", name = "Runic Power" },
-						{ token = "SOUL_SHARDS", name = "Soul Shards" },
-						{ token = "LUNAR_POWER", name = "Lunar Power" },
-						{ token = "HOLY_POWER", name = "Holy Power" },
-						{ token = "MAELSTROM", name = "Maelstrom" },
-						{ token = "INSANITY", name = "Insanity" },
-						{ token = "CHI", name = "Chi" },
-						{ token = "ARCANE_CHARGES", name = "Arcane Charges" },
-						{ token = "COMBO_POINTS", name = "Combo Points" },
-						{ token = "FURY", name = "Fury" },
-						{ token = "PAIN", name = "Pain" },
-					};
-					
-					for i, powerType in ipairs(powerTypes) do
-						args["powerColor_" .. powerType.token] = {
-							type = "color",
-							name = powerType.name,
-							desc = "Color override for " .. powerType.name .. " resource type. Applies to all frames.",
-							hasAlpha = true,
-							order = i,
-						};
-					end
-					
-					return args;
-				end)(),
-			},
-		},
+		args = args,
 	};
 end
 
+-- Register this option group
+if ns.Options then
+	ns.Options:RegisterOptionGroup("powerColors", "Power Colors", 7, function() return PowerColorOptions:BuildOptions(); end);
+end
