@@ -29,6 +29,56 @@ function addon:OnInitialize()
 
 	local defaults = ns.Defaults or {};
 	self.db = AceDB:New("PonyBetterResourceManagerDB", defaults, true);
+	
+	-- Register for profile change events to refresh modules when profiles are switched
+	self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged");
+	self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged");
+	self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged");
+
+	-- Pre-create PUF profile if it doesn't exist
+	if ns.PUFDefaults and ns.PUFDefaults.GetSUFDefaults then
+		-- Check if PUF profile already exists
+		local profiles = self.db:GetProfiles();
+		local pufExists = false;
+		for _, profileName in ipairs(profiles) do
+			if profileName == "PUF" then
+				pufExists = true;
+				break;
+			end
+		end
+		
+		if not pufExists then
+			-- Get current profile name to restore it later
+			local currentProfile = self.db:GetCurrentProfile();
+			
+			-- Get SUF defaults
+			local sufDefaults = ns.PUFDefaults:GetSUFDefaults();
+			
+			-- Create PUF profile by switching to it (this creates it)
+			self.db:SetProfile("PUF");
+			
+			-- Reset the profile first to clear any default values (suppress callbacks during reset)
+			self.db:ResetProfile(nil, true);
+			
+			-- Deep copy SUF defaults into the PUF profile (overwrites any defaults from ResetProfile)
+			local DeepCopy = ns.PUFDefaults.DeepCopy;
+			if DeepCopy then
+				-- Copy each top-level key from SUF defaults to current profile
+				for key, value in pairs(sufDefaults) do
+					if type(value) == "table" then
+						self.db.profile[key] = DeepCopy(value);
+					else
+						self.db.profile[key] = value;
+					end
+				end
+			end
+			
+			-- Restore original profile
+			if currentProfile and currentProfile ~= "PUF" then
+				self.db:SetProfile(currentProfile);
+			end
+		end
+	end
 
 	-- Migrate existing texts to have resourceType field
 	if ns.PersonalResourceTextOptions and ns.PersonalResourceTextOptions.MigrateTexts then
@@ -69,6 +119,10 @@ function addon:OnEnable()
 	if ns.EditModeTargetOfTargetResource and ns.EditModeTargetOfTargetResource.Init then
 		ns.EditModeTargetOfTargetResource:Init();
 	end
+	
+	-- Enable modules that should be enabled based on current profile
+	-- This ensures modules are enabled on initial load, not just when config changes
+	self:NotifyConfigChanged();
 end
 
 function addon:OpenConfig()
@@ -108,6 +162,12 @@ function addon:NotifyConfigChanged()
 	HandleModuleRefresh("FocusResource", "focusResource");
 	HandleModuleRefresh("PetResource", "petResource");
 	HandleModuleRefresh("TargetOfTargetResource", "targetOfTargetResource");
+end
+
+function addon:OnProfileChanged()
+	-- Called when profile is changed, copied, or reset
+	-- Refresh all modules to apply new profile settings
+	self:NotifyConfigChanged();
 end
 
 

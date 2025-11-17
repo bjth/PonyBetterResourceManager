@@ -21,6 +21,7 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 Core\Core.lua
 Core\Config.lua
+Core\PUFDefaults.lua
 Core\Media.lua
 Core\EditMode.lua
 Core\EditModeHelper.lua
@@ -64,6 +65,7 @@ Modules\TargetOfTargetResource\Style.lua
 Modules\TargetOfTargetResource\Layout.lua
 
 Options\Options.lua
+Options\Options_Profiles.lua
 Options\Options_Shared.lua
 Options\Options_Texts_Shared.lua
 Options\Options_Texts.lua

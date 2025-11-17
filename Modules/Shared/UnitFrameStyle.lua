@@ -89,7 +89,10 @@ function UnitFrameStyle:FormatHealth(unit, template, hp, maxHp)
 		end
 	end
 
-	if DataTokens and DataTokens.ProcessTemplate then
+	-- Get DataTokens at runtime (not at load time) in case it's not loaded yet
+	local DataTokensRuntime = ns.DataTokens;
+	
+	if DataTokensRuntime and DataTokensRuntime.ProcessTemplate then
 		local context = {
 			hp = hp,
 			maxHp = maxHp,
@@ -101,7 +104,7 @@ function UnitFrameStyle:FormatHealth(unit, template, hp, maxHp)
 			pctFormatted = pctFormatted,
 			unit = unit,
 		};
-		return DataTokens:ProcessTemplate(template, context);
+		return DataTokensRuntime:ProcessTemplate(template, context);
 	else
 		return "";
 	end
@@ -158,7 +161,10 @@ function UnitFrameStyle:FormatPower(unit, template, power, maxPower)
 		end
 	end
 
-	if DataTokens and DataTokens.ProcessTemplate then
+	-- Get DataTokens at runtime (not at load time) in case it's not loaded yet
+	local DataTokensRuntime = ns.DataTokens;
+	
+	if DataTokensRuntime and DataTokensRuntime.ProcessTemplate then
 		local context = {
 			power = power,
 			maxPower = maxPower,
@@ -170,7 +176,7 @@ function UnitFrameStyle:FormatPower(unit, template, power, maxPower)
 			pctFormatted = pctFormatted,
 			unit = unit,
 		};
-		return DataTokens:ProcessTemplate(template, context);
+		return DataTokensRuntime:ProcessTemplate(template, context);
 	else
 		return "";
 	end
@@ -191,37 +197,39 @@ function UnitFrameStyle:UpdateTextForBar(frame, db, bar, targetType, unit, resou
 		return;
 	end
 
-	if db.healthTextEnabled == false then
-		if frame._PBRMTexts then
-			for _, fs in pairs(frame._PBRMTexts) do
-				fs:SetText("");
-				fs:Hide();
-			end
-		end
-		return;
-	end
-
 	frame._PBRMTexts = frame._PBRMTexts or {};
 	frame._PBRMTextsUsed = frame._PBRMTextsUsed or {};
-	local personalDb = addon.db and addon.db.profile and addon.db.profile.personalResource;
-	local texts = personalDb and personalDb.texts;
+	
+	-- Texts are stored in each resource's own database (db.texts)
+	-- Initialize if needed
+	if not db.texts then
+		db.texts = {};
+	end
+	local texts = db.texts;
 	
 	if not UnitExists(unit) then
 		return;
 	end
 	
-	if type(texts) ~= "table" or #texts == 0 then
+	if type(texts) ~= "table" then
 		return;
-	else
-		for index, entry in ipairs(texts) do
+	end
+	
+	-- Iterate through texts and display matching ones
+	for index, entry in ipairs(texts) do
+		if not entry then
+			-- Skip nil entries
+		else
 			-- Filter by resourceType
 			local entryResourceType = entry.resourceType;
+			-- Must match exactly (no backward compatibility here - texts should have resourceType set)
 			if entryResourceType == resourceType then
 				local entryTarget = entry.target;
+				-- For backward compatibility, nil target defaults to HEALTH for health bars
 				if targetType == "HEALTH" and entryTarget == nil then
 					entryTarget = "HEALTH";
 				end
-				if entry and entry.enabled ~= false and entryTarget == targetType then
+				if entry.enabled ~= false and entryTarget == targetType then
 					local fsKey = index .. "_" .. targetType;
 					local fs = frame._PBRMTexts[fsKey];
 					if not fs then
@@ -235,8 +243,9 @@ function UnitFrameStyle:UpdateTextForBar(frame, db, bar, targetType, unit, resou
 					local y = entry.y or 0;
 					fs:SetPoint(point, bar, point, x, y);
 
-					local defaultFont = db.textDefaultFont or (personalDb and personalDb.textDefaultFont) or "FRIZQT";
-					local defaultSize = db.textDefaultSize or (personalDb and personalDb.textDefaultSize) or 18;
+					-- Use default font/size from db (db is already the correct resource database)
+					local defaultFont = db.textDefaultFont or "FRIZQT";
+					local defaultSize = db.textDefaultSize or 18;
 					local fontKey = entry.font or defaultFont;
 					local fontPath = self:ResolveFontPath(fontKey);
 					local size = entry.size or defaultSize;
@@ -253,7 +262,7 @@ function UnitFrameStyle:UpdateTextForBar(frame, db, bar, targetType, unit, resou
 					
 					fs:SetFont(fontPath, size, outlineStyle);
 
-					local defaultColor = db.textDefaultColor or (personalDb and personalDb.textDefaultColor) or { r = 1, g = 1, b = 1, a = 1 };
+					local defaultColor = db.textDefaultColor or { r = 1, g = 1, b = 1, a = 1 };
 					local color = entry.color or defaultColor;
 					local r = (type(color.r) == "number" and color.r >= 0 and color.r <= 1) and color.r or 1;
 					local g = (type(color.g) == "number" and color.g >= 0 and color.g <= 1) and color.g or 1;
@@ -281,10 +290,25 @@ function UnitFrameStyle:UpdateTextForBar(frame, db, bar, targetType, unit, resou
 					end
 
 					fs:SetDrawLayer("OVERLAY", 7);
-					fs:SetJustifyH("CENTER");
-					fs:SetJustifyV("MIDDLE");
+					
+					-- Set justify based on anchor point for better text positioning
+					local justifyH = "CENTER";
+					local justifyV = "MIDDLE";
+					if point == "LEFT" or point == "TOPLEFT" or point == "BOTTOMLEFT" then
+						justifyH = "LEFT";
+					elseif point == "RIGHT" or point == "TOPRIGHT" or point == "BOTTOMRIGHT" then
+						justifyH = "RIGHT";
+					end
+					if point == "TOP" or point == "TOPLEFT" or point == "TOPRIGHT" then
+						justifyV = "TOP";
+					elseif point == "BOTTOM" or point == "BOTTOMLEFT" or point == "BOTTOMRIGHT" then
+						justifyV = "BOTTOM";
+					end
+					fs:SetJustifyH(justifyH);
+					fs:SetJustifyV(justifyV);
 					
 					fs:SetText(textStr);
+					-- Force hide/show to ensure font and other changes are applied
 					fs:Hide();
 					fs:Show();
 

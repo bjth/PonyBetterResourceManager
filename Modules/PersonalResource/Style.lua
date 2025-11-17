@@ -295,162 +295,50 @@ local function FormatPowerCustom(template, power, maxPower, unit)
 	end
 end
 
-local function UpdateTextForBar(frame, db, bar, targetType, formatFunc, getCurrentValue, getMaxValue)
-	if not frame or not db or not bar then
+-- Get shared UnitFrameStyle for text updates
+local UnitFrameStyle = ns.UnitFrameStyle;
+
+-- Set up OnValueChanged hook on the bar to update text when value changes
+local function SetupTextUpdateHook(bar, frame, targetType)
+	if not bar or bar._PBRMTextUpdateRegistered then
 		return;
 	end
-
-	-- Master toggle: if disabled, hide all texts.
-	if db.healthTextEnabled == false then
-		if frame._PBRMTexts then
-			for _, fs in pairs(frame._PBRMTexts) do
-				fs:SetText("");
-				fs:Hide();
-			end
-		end
-		return;
-	end
-
-	frame._PBRMTexts = frame._PBRMTexts or {};
-	frame._PBRMTextsUsed = frame._PBRMTextsUsed or {}; -- Track which entries are used across all target types
-	local texts = db.texts;
 	
-	-- Set up OnValueChanged hook on the bar to update text when value changes
-	if not bar._PBRMTextUpdateRegistered then
-		bar._PBRMTextUpdateRegistered = true;
-		bar._PBRMFrameRef = frame;
-		bar._PBRMTargetType = targetType;
+	bar._PBRMTextUpdateRegistered = true;
+	bar._PBRMFrameRef = frame;
+	bar._PBRMTargetType = targetType;
+	
+	local existingOnValueChanged = bar:GetScript("OnValueChanged");
+	
+	bar:SetScript("OnValueChanged", function(self, value)
+		if existingOnValueChanged then
+			existingOnValueChanged(self, value);
+		end
 		
-		local existingOnValueChanged = bar:GetScript("OnValueChanged");
-		
-		bar:SetScript("OnValueChanged", function(self, value)
-			if existingOnValueChanged then
-				existingOnValueChanged(self, value);
+		local frameRef = self._PBRMFrameRef;
+		local storedTargetType = self._PBRMTargetType;
+		if frameRef then
+			local addon = ns.Addon;
+			local db = addon and addon.db and addon.db.profile and addon.db.profile.personalResource;
+			if db and db.healthTextEnabled ~= false then
+				local Style = ns.PersonalResourceStyle;
+				if storedTargetType == "HEALTH" and Style and Style.UpdateHealthText then
+					Style:UpdateHealthText(frameRef, db);
+				elseif storedTargetType == "POWER" and Style and Style.UpdatePowerText then
+					Style:UpdatePowerText(frameRef, db);
+				end
 			end
 			
-			local frameRef = self._PBRMFrameRef;
-			local storedTargetType = self._PBRMTargetType;
-			if frameRef then
-				local addon = ns.Addon;
-				local db = addon and addon.db and addon.db.profile and addon.db.profile.personalResource;
-				if db and db.healthTextEnabled ~= false then
-					local Style = ns.PersonalResourceStyle;
-					if storedTargetType == "HEALTH" and Style and Style.UpdateHealthText then
-						Style:UpdateHealthText(frameRef, db);
-					elseif storedTargetType == "POWER" and Style and Style.UpdatePowerText then
-						Style:UpdatePowerText(frameRef, db);
-					end
-				end
-				
-				-- Also reapply power bar styling immediately after value changes
-				-- This fires after Blizzard's UpdatePower completes, eliminating flicker
-				if storedTargetType == "POWER" and Style and Style.ApplyPowerBarStyle and db then
-					local styleFrameRef = self._PBRMStyleFrameRef or frameRef;
-					if styleFrameRef then
-						Style:ApplyPowerBarStyle(styleFrameRef, db);
-					end
-				end
-			end
-		end);
-	end
-
-	if type(texts) ~= "table" or #texts == 0 then
-		-- Only hide if this is the last target type being processed
-		-- For now, just mark as unused - we'll clean up at the end
-		return;
-	else
-		for index, entry in ipairs(texts) do
-			-- Filter by resourceType: only show PERSONAL texts (or nil for backward compatibility)
-			local entryResourceType = entry.resourceType;
-			if not entryResourceType or entryResourceType == "PERSONAL" then
-				-- For backward compatibility, nil target defaults to HEALTH
-				local entryTarget = entry.target;
-				if targetType == "HEALTH" and entryTarget == nil then
-					entryTarget = "HEALTH";
-				end
-				if entry and entry.enabled ~= false and entryTarget == targetType then
-				-- Use a composite key: index + target type to avoid conflicts
-				local fsKey = index .. "_" .. targetType;
-				local fs = frame._PBRMTexts[fsKey];
-				if not fs then
-					fs = bar:CreateFontString(nil, "OVERLAY");
-					frame._PBRMTexts[fsKey] = fs;
-				end
-
-				fs:ClearAllPoints();
-				local point = entry.anchor or "CENTER";
-				local x = entry.x or 0;
-				local y = entry.y or 0;
-				fs:SetPoint(point, bar, point, x, y);
-
-				-- Always update font and size (in case they changed)
-				local fontKey = entry.font or db.textDefaultFont or "FRIZQT";
-				-- Re-fetch font path in case LibSharedMedia font changed
-				local fontPath = ResolveFontPath(fontKey);
-				local size = entry.size or db.textDefaultSize or 18;
-				-- Get font outline style (NONE, OUTLINE, THICKOUTLINE, MONOCHROME)
-				local outlineStyle = entry.outline or "OUTLINE";
-				if outlineStyle == "NONE" then
-					outlineStyle = "";
-				end
-				
-				-- Get current values and format text first (before setting font/shadow)
-				local current = getCurrentValue();
-				local max = getMaxValue();
-				local formatString = entry.format or "";
-				local text = formatFunc(formatString, current, max);
-				local textStr = tostring(text or "");
-				
-				-- Set font - this will update even if the same font is used
-				fs:SetFont(fontPath, size, outlineStyle);
-
-				-- Always update color (in case it changed)
-				local color = entry.color or db.textDefaultColor or { r = 1, g = 1, b = 1, a = 1 };
-				-- Validate color values
-				local r = (type(color.r) == "number" and color.r >= 0 and color.r <= 1) and color.r or 1;
-				local g = (type(color.g) == "number" and color.g >= 0 and color.g <= 1) and color.g or 1;
-				local b = (type(color.b) == "number" and color.b >= 0 and color.b <= 1) and color.b or 1;
-				local a = (type(color.a) == "number" and color.a >= 0 and color.a <= 1) and color.a or 1;
-				fs:SetTextColor(r, g, b, a);
-
-				-- Apply drop shadow if enabled
-				local shadowEnabled = entry.shadowEnabled;
-				if shadowEnabled == nil then
-					shadowEnabled = true; -- Default to enabled
-				end
-				if shadowEnabled then
-					local shadowOffsetX = entry.shadowOffsetX or 1;
-					local shadowOffsetY = entry.shadowOffsetY or -1;
-					local shadowColor = entry.shadowColor or { r = 0, g = 0, b = 0, a = 1 };
-					local sr = (type(shadowColor.r) == "number" and shadowColor.r >= 0 and shadowColor.r <= 1) and shadowColor.r or 0;
-					local sg = (type(shadowColor.g) == "number" and shadowColor.g >= 0 and shadowColor.g <= 1) and shadowColor.g or 0;
-					local sb = (type(shadowColor.b) == "number" and shadowColor.b >= 0 and shadowColor.b <= 1) and shadowColor.b or 0;
-					local sa = (type(shadowColor.a) == "number" and shadowColor.a >= 0 and shadowColor.a <= 1) and shadowColor.a or 1;
-					fs:SetShadowColor(sr, sg, sb, sa);
-					fs:SetShadowOffset(shadowOffsetX, shadowOffsetY);
-				else
-					fs:SetShadowColor(0, 0, 0, 0);
-					fs:SetShadowOffset(0, 0);
-				end
-
-				fs:SetDrawLayer("OVERLAY", 7);
-				fs:SetJustifyH("CENTER");
-				fs:SetJustifyV("MIDDLE");
-				
-				-- Set text after font/shadow to force a refresh
-				fs:SetText(textStr);
-				-- Force hide/show to ensure font and shadow changes are applied
-				fs:Hide();
-				fs:Show();
-
-				frame._PBRMTextsUsed[fsKey] = true;
+			-- Also reapply power bar styling immediately after value changes
+			-- This fires after Blizzard's UpdatePower completes, eliminating flicker
+			if storedTargetType == "POWER" and Style and Style.ApplyPowerBarStyle and db then
+				local styleFrameRef = self._PBRMStyleFrameRef or frameRef;
+				if styleFrameRef then
+					Style:ApplyPowerBarStyle(styleFrameRef, db);
 				end
 			end
 		end
-	end
-	
-	-- Clean up font strings that are no longer used (after both UpdateHealthText and UpdatePowerText have run)
-	-- We'll do this cleanup in ApplyAll after both have been called
+	end);
 end
 
 -- Helper function to check if format string contains dynamic tokens
@@ -470,15 +358,26 @@ function Style:UpdateHealthText(frame, db)
 		return;
 	end
 	
-	UpdateTextForBar(
-		frame, 
-		db, 
-		bar, 
-		"HEALTH",
-		FormatHealthCustom,
-		function() return UnitHealth("player"); end,
-		function() return UnitHealthMax("player"); end
-	);
+	-- Set up OnValueChanged hook if not already done
+	SetupTextUpdateHook(bar, frame, "HEALTH");
+	
+	-- Use shared UnitFrameStyle for consistent text handling
+	if UnitFrameStyle then
+		UnitFrameStyle:UpdateTextForBar(
+			frame, 
+			db, 
+			bar, 
+			"HEALTH",
+			"player",
+			"PERSONAL",
+			function(template, current, max) return FormatHealthCustom(template, current, max); end,
+			function() return UnitHealth("player"); end,
+			function() return UnitHealthMax("player"); end
+		);
+	else
+		-- Fallback if UnitFrameStyle not available (shouldn't happen)
+		return;
+	end
 end
 
 function Style:UpdatePowerText(frame, db)
@@ -487,15 +386,26 @@ function Style:UpdatePowerText(frame, db)
 		return;
 	end
 	
-	UpdateTextForBar(
-		frame, 
-		db, 
-		bar, 
-		"POWER",
-		FormatPowerCustom,
-		function() return UnitPower("player"); end,
-		function() return UnitPowerMax("player"); end
-	);
+	-- Set up OnValueChanged hook if not already done
+	SetupTextUpdateHook(bar, frame, "POWER");
+	
+	-- Use shared UnitFrameStyle for consistent text handling
+	if UnitFrameStyle then
+		UnitFrameStyle:UpdateTextForBar(
+			frame, 
+			db, 
+			bar, 
+			"POWER",
+			"player",
+			"PERSONAL",
+			function(template, current, max) return FormatPowerCustom(template, current, max, "player"); end,
+			function() return UnitPower("player"); end,
+			function() return UnitPowerMax("player"); end
+		);
+	else
+		-- Fallback if UnitFrameStyle not available (shouldn't happen)
+		return;
+	end
 end
 
 function Style:ApplyPowerBarStyle(frame, db)
@@ -772,30 +682,32 @@ function Style:SetupDynamicTokenUpdates(frame, db)
 									local fsKey = index .. "_" .. entryTarget;
 									local fs = targetFrame._PBRMTexts[fsKey];
 									if fs and fs:IsShown() then
-										-- Get the appropriate bar and format function
-										local bar = nil;
-										local formatFunc = nil;
-										local getCurrentValue = nil;
-										local getMaxValue = nil;
+									-- Get the appropriate bar and value getters
+									local bar = nil;
+									local getCurrentValue = nil;
+									local getMaxValue = nil;
 										
 										if entryTarget == "HEALTH" then
 											bar = targetFrame.healthbar;
-											formatFunc = FormatHealthCustom;
 											getCurrentValue = function() return UnitHealth("player"); end;
 											getMaxValue = function() return UnitHealthMax("player"); end;
 										elseif entryTarget == "POWER" then
 											bar = targetFrame.PowerBar;
-											formatFunc = FormatPowerCustom;
 											getCurrentValue = function() return UnitPower("player"); end;
 											getMaxValue = function() return UnitPowerMax("player"); end;
 										end
 										
-										if bar and formatFunc and getCurrentValue and getMaxValue then
+										if bar and getCurrentValue and getMaxValue then
 											-- Only update the text, don't trigger full refresh
 											local current = getCurrentValue();
 											local max = getMaxValue();
 											local formatString = entry.format or "";
-											local text = formatFunc(formatString, current, max);
+											local text = "";
+											if entryTarget == "HEALTH" then
+												text = FormatHealthCustom(formatString, current, max);
+											elseif entryTarget == "POWER" then
+												text = FormatPowerCustom(formatString, current, max, "player");
+											end
 											local textStr = tostring(text or "");
 											fs:SetText(textStr);
 										end

@@ -84,7 +84,8 @@ function PetResource:OnEnable()
 	self:CreateFrame();
 	
 	-- Register for pet unit events
-	self:RegisterEvent("PLAYER_PET_CHANGED", "PLAYER_PET_CHANGED");
+	-- Note: PLAYER_PET_CHANGED event was removed in a WoW update, so we rely on UNIT events
+	-- which fire when the pet exists and update. We check UnitExists("pet") in update functions.
 	self:RegisterEvent("UNIT_HEALTH", "UNIT_HEALTH");
 	self:RegisterEvent("UNIT_MAXHEALTH", "UNIT_MAXHEALTH");
 	self:RegisterEvent("UNIT_POWER_UPDATE", "UNIT_POWER_UPDATE");
@@ -141,7 +142,6 @@ function PetResource:OnDisable()
 		self.frame:Hide();
 	end
 	
-	self:UnregisterEvent("PLAYER_PET_CHANGED");
 	self:UnregisterEvent("UNIT_HEALTH");
 	self:UnregisterEvent("UNIT_MAXHEALTH");
 	self:UnregisterEvent("UNIT_POWER_UPDATE");
@@ -149,14 +149,6 @@ function PetResource:OnDisable()
 	self:UnregisterEvent("UNIT_DISPLAYPOWER");
 	self:UnregisterEvent("UNIT_HEAL_PREDICTION");
 	self:UnregisterEvent("UNIT_ABSORB_AMOUNT_CHANGED");
-end
-
-function PetResource:PLAYER_PET_CHANGED()
-	local db = GetDB();
-	if db and UnitFrameBase then
-		UnitFrameBase:SetupBlizzardFrameHiding("PetFrame", db, GetDB, "hidePetFrame", function() return UnitExists("pet"); end);
-	end
-	self:UpdatePetDisplay();
 end
 
 function PetResource:UNIT_HEALTH(event, unit)

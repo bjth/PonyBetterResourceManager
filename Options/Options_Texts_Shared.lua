@@ -473,7 +473,7 @@ end
 function TextOptionsShared:BuildResourceTextSection(resourceType, displayName, availableTargets, getDBFunc, getResourceDBFunc)
 	local args = {};
 	
-	-- Get the texts from personalResource DB (unified storage)
+	-- Get texts from the resource's own database
 	local db = getDBFunc();
 	if not db or type(db.texts) ~= "table" then
 		-- Return empty section with just Add Text button
@@ -572,6 +572,12 @@ function TextOptionsShared:BuildResourceTextSection(resourceType, displayName, a
 			dbLocal.texts[index] = dbLocal.texts[index] or {};
 			local entry = dbLocal.texts[index];
 			
+			-- Set resourceType if not set (for new entries)
+			if not entry.resourceType then
+				entry.resourceType = resourceType;
+			end
+			
+			-- Only allow editing entries that match this resourceType
 			if entry.resourceType ~= resourceType then
 				return;
 			end

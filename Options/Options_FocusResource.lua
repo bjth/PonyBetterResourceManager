@@ -541,7 +541,8 @@ function FocusOptions:BuildOptions()
 	local TextOptionsShared = ns.TextOptionsShared;
 	if TextOptionsShared then
 		local function GetTextsDB()
-			return addon.db and addon.db.profile and addon.db.profile.personalResource;
+			-- Texts are stored in each resource's own database
+			return addon.db and addon.db.profile and addon.db.profile.focusResource;
 		end
 		local function GetFocusDB()
 			return addon.db and addon.db.profile and addon.db.profile.focusResource;
