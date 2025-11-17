@@ -196,11 +196,9 @@ function UnitFrameBase:UpdateUnitHealth(frame, unit, db, Style)
 	end
 	
 	-- Re-apply health bar color after updating absorb bar
-	if BarStyling and db then
-		BarStyling:ApplyBarVisuals(healthBar, db.healthTexture, db.healthColor, db.overrideHealthColor);
-		if not db.overrideHealthColor then
-			healthBar:SetStatusBarColor(0.0, 0.8, 0.0);
-		end
+	-- Use ApplyHealthBarStyle to ensure unit colors are properly applied
+	if BarStyling and db and frame.HealthBarsContainer then
+		BarStyling:ApplyHealthBarStyle(frame, healthBar, frame.HealthBarsContainer, db, unit);
 	end
 	
 	-- Update text if enabled
@@ -308,11 +306,9 @@ function UnitFrameBase:UpdateUnitDisplay(frame, unit, db, Style, hasUnitFunc)
 	if Style and Style.ApplyAll and db then
 		Style:ApplyAll(frame, db);
 		-- Re-apply health bar color after styling to ensure it's correct
-		if BarStyling and frame.healthbar then
-			BarStyling:ApplyBarVisuals(frame.healthbar, db.healthTexture, db.healthColor, db.overrideHealthColor);
-			if not db.overrideHealthColor then
-				frame.healthbar:SetStatusBarColor(0.0, 0.8, 0.0);
-			end
+		-- Use ApplyHealthBarStyle to ensure unit colors are properly applied
+		if BarStyling and frame.healthbar and frame.HealthBarsContainer then
+			BarStyling:ApplyHealthBarStyle(frame, frame.healthbar, frame.HealthBarsContainer, db, unit);
 		end
 	end
 end

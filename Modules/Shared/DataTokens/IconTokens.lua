@@ -157,3 +157,22 @@ DataTokens:RegisterToken("specicon", function(token, tokenLower, modifiers, cont
 	return "";
 end);
 
+-- Register {eliteicon} token - shows elite gold dragon icon
+-- {eliteicon} - elite icon (uses context.unit or defaults to "player")
+-- {eliteicon:unit} - elite icon for specified unit
+DataTokens:RegisterToken("eliteicon", function(token, tokenLower, modifiers, context)
+	local unit = DataTokens:GetUnit(context);
+	
+	if not UnitExists(unit) then
+		return "";
+	end
+	
+	local classification = UnitClassification(unit);
+	-- Show gold dragon icon for elite and worldboss classifications
+	if classification == "elite" or classification == "worldboss" then
+		return "|A:nameplates-icon-elite-gold:16:16|a";
+	end
+	
+	return "";
+end);
+

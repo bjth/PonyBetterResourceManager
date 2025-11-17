@@ -31,6 +31,7 @@ Core\EditMode_PetResource.lua
 Core\EditMode_TargetOfTargetResource.lua
 
 Modules\Shared\PowerColor.lua
+Modules\Shared\UnitColor.lua
 Modules\Shared\BarStyling.lua
 Modules\Shared\FrameLayout.lua
 Modules\Shared\UnitFrameBase.lua
@@ -75,5 +76,6 @@ Options\Options_FocusResource.lua
 Options\Options_PetResource.lua
 Options\Options_TargetOfTargetResource.lua
 Options\Options_PowerColors.lua
+Options\Options_UnitColors.lua
 
 

@@ -9,6 +9,7 @@ ns.BarStyling = BarStyling;
 
 local LSM = ns.Media and ns.Media.LSM;
 local PowerColor = ns.PowerColor;
+local UnitColor = ns.UnitColor;
 
 -- Get status bar texture from LibSharedMedia
 local function GetStatusBarTexture(key)
@@ -240,11 +241,30 @@ function BarStyling:ApplyHealthBarStyle(frame, healthBar, container, db, unit)
 	
 	-- Border alpha is now handled per-border via border color alpha
 	
-	-- Apply texture and optional override color
-	self:ApplyBarVisuals(healthBar, db.healthTexture, db.healthColor, db.overrideHealthColor);
+	-- Apply texture
+	local texture = GetStatusBarTexture(db.healthTexture);
+	if texture then
+		healthBar:SetStatusBarTexture(texture);
+	end
 	
-	-- If not overriding, restore Blizzard's default health color
-	if not db.overrideHealthColor then
+	-- Apply health color based on priority:
+	-- 1. If useUnitHealthColor is enabled, use unit reaction color
+	-- 2. Else if overrideHealthColor is enabled, use custom color
+	-- 3. Else use Blizzard's default green
+	if db.useUnitHealthColor and UnitColor then
+		UnitColor:ApplyUnitColor(healthBar, unit, db);
+	elseif db.overrideHealthColor and db.healthColor then
+		local r = db.healthColor.r or 1;
+		local g = db.healthColor.g or 1;
+		local b = db.healthColor.b or 1;
+		local a = db.healthColor.a;
+		if a ~= nil then
+			healthBar:SetStatusBarColor(r, g, b, a);
+		else
+			healthBar:SetStatusBarColor(r, g, b);
+		end
+	else
+		-- Default green health color
 		healthBar:SetStatusBarColor(0.0, 0.8, 0.0);
 	end
 	

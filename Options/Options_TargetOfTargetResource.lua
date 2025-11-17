@@ -162,21 +162,31 @@ function TargetOptions:BuildOptions()
 							values = BuildStatusBarValues,
 							order = 1,
 						},
+						useUnitHealthColor = {
+							type = "toggle",
+							name = "Use Unit Color",
+							desc = "Use the target's reaction color for health bar (hostile=red, friendly=green, etc.). Overrides custom color.",
+							order = 2,
+						},
 						overrideHealthColor = {
 							type = "toggle",
 							name = "Override Health Color",
-							desc = "Use a custom health bar color instead of default green.",
-							order = 2,
+							desc = "Use a custom health bar color instead of Blizzard defaults. Disabled when 'Use Unit Color' is enabled.",
+							order = 3,
+							disabled = function()
+								local db = GetDB();
+								return db and db.useUnitHealthColor;
+							end,
 						},
 						healthColor = {
 							type = "color",
 							name = "Health Color",
-							desc = "Custom color for the health bar.",
+							desc = "Custom color for the health bar. Only used when 'Override Health Color' is enabled and 'Use Unit Color' is disabled.",
 							hasAlpha = true,
-							order = 3,
+							order = 4,
 							disabled = function()
 								local db = GetDB();
-								return not (db and db.overrideHealthColor);
+								return not (db and db.overrideHealthColor) or (db and db.useUnitHealthColor);
 							end,
 						},
 						healthBackgroundEnabled = {

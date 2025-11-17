@@ -23,6 +23,14 @@ ns.Defaults = {
 			FURY = { r = 0.78, g = 0.26, b = 0.22 },
 			PAIN = { r = 0.9, g = 0.0, b = 0.0 },
 		},
+		-- Global unit reaction color overrides (applies to health bars when useUnitHealthColor is enabled)
+		-- Reaction values: 1=Hated, 2=Hostile, 3=Unfriendly, 4=Neutral, 5=Friendly, 6=Honored, 7=Revered, 8=Exalted
+		unitColors = {
+			-- Defaults will be pulled from Blizzard's FACTION_BAR_COLORS or UnitSelectionColor
+			-- Users can override these in the options
+		},
+		-- Use class colors for friendly units (players, party members) instead of blue selection color
+		useClassColorForFriendly = false,
 		personalResource = {
 			enabled = true,
 
@@ -40,6 +48,7 @@ ns.Defaults = {
 			powerBorderSize = 1.0,
 
 			-- Colors (nil means use Blizzard's defaults / class colors)
+			useUnitHealthColor = false,
 			overrideHealthColor = false,
 			healthColor = { r = 0.0, g = 0.8, b = 0.0, a = 1.0 },
 
